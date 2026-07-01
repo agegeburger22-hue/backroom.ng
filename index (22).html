@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backroom — where the real running happens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --shell:#17251F; --shell-soft:#1F312A; --shell-line:#2C4137;
+    --paper:#FAF7F0; --card:#FFFFFF; --ink:#221F1A; --ink-soft:#6E675C; --line:#E7E0D3;
+    --agege:#E8752E; --ndk:#C03434; --breadi:#C99A3A; --moomoo:#D66A8F;
+    --ok:#3E7C4F; --warn:#B4552B; --chalk:#EDE7DA;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Instrument Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+  .disp{font-family:'Bricolage Grotesque',sans-serif}
+
+  #loginScreen{min-height:100vh;background:var(--shell);display:flex;align-items:center;justify-content:center;padding:24px;
+    background-image:radial-gradient(ellipse at 20% 10%, #21362D 0%, transparent 55%),radial-gradient(ellipse at 85% 90%, #1B2C25 0%, transparent 50%);}
+  .login-card{width:100%;max-width:400px}
+  .wordmark{color:var(--chalk);text-align:center;margin-bottom:6px}
+  .wordmark .disp{font-size:2.5rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .wordmark .tag{font-size:.78rem;color:#8FA598;letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+  .brand-dots{display:flex;justify-content:center;gap:8px;margin:18px 0 26px}
+  .brand-dots span{width:9px;height:9px;border-radius:50%}
+  .login-box{background:var(--paper);border-radius:14px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .login-box h2{font-family:'Bricolage Grotesque';font-size:1.15rem;font-weight:600;margin-bottom:16px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font:inherit;font-size:.95rem;background:#fff;color:var(--ink)}
+  .field textarea{resize:vertical;min-height:70px}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--shell);outline-offset:1px;border-color:var(--shell)}
+  .btn-primary{width:100%;padding:12px;background:var(--shell);color:var(--chalk);border:none;border-radius:9px;font:inherit;font-weight:600;font-size:.95rem;cursor:pointer}
+  .btn-primary:hover{background:#1F332A}
+  .btn-primary:disabled{opacity:.6;cursor:wait}
+  .login-err{color:var(--ndk);font-size:.82rem;margin-top:10px;display:none}
+  .login-foot{text-align:center;color:#6E8578;font-size:.75rem;margin-top:18px}
+
+  #app{display:none;min-height:100vh}
+  #app.active{display:flex}
+  .sidebar{width:236px;background:var(--shell);color:#C9D6CD;flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;overflow-y:auto;z-index:40;transition:transform .25s ease}
+  .sb-head{padding:20px 18px 14px;border-bottom:1px solid var(--shell-line)}
+  .sb-head .disp{color:var(--chalk);font-weight:800;font-size:1.3rem}
+  .sb-head .tag{font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;color:#7E947F;margin-top:3px}
+  .nav-group{padding:14px 10px 4px}
+  .nav-group h4{font-size:.63rem;letter-spacing:.18em;text-transform:uppercase;color:#69806F;padding:0 10px;margin-bottom:6px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:.86rem;cursor:pointer;color:#C9D6CD;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+  .nav-item:hover{background:var(--shell-soft);color:var(--chalk)}
+  .nav-item.active{background:var(--shell-soft);color:var(--chalk);font-weight:600}
+  .nav-item .lock{margin-left:auto;font-size:.68rem;color:#69806F}
+  .sb-foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--shell-line);font-size:.75rem;color:#7E947F}
+  .main{flex:1;margin-left:236px;padding:26px 30px 60px;min-width:0}
+
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+  .topbar h1{font-family:'Bricolage Grotesque';font-size:1.5rem;font-weight:800}
+  .topbar .crumb{font-size:.8rem;color:var(--ink-soft)}
+  .user-chip{margin-left:auto;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--shell);color:var(--chalk);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.8rem}
+  .user-chip .who{font-size:.82rem;font-weight:600;line-height:1.1}
+  .user-chip .role{font-size:.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+  .logout{background:none;border:none;color:var(--ink-soft);font-size:.78rem;cursor:pointer;text-decoration:underline;font-family:inherit}
+  .menu-btn{display:none;background:var(--shell);color:var(--chalk);border:none;border-radius:8px;width:38px;height:38px;font-size:1.1rem;cursor:pointer}
+
+  .period{display:inline-flex;background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:3px;margin-bottom:22px}
+  .period button{border:none;background:none;padding:7px 16px;border-radius:999px;font:inherit;font-size:.82rem;font-weight:500;cursor:pointer;color:var(--ink-soft)}
+  .period button.active{background:var(--shell);color:var(--chalk);font-weight:600}
+
+  .biz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-bottom:26px}
+  .ticket{background:var(--card);border-radius:4px 4px 0 0;box-shadow:0 2px 10px rgba(34,31,26,.07);overflow:hidden}
+  .ticket::after{content:"";display:block;height:10px;
+    background:linear-gradient(-45deg, transparent 5px, var(--card) 0) 0 0/12px 100% repeat-x,
+               linear-gradient(45deg, transparent 5px, var(--card) 0) 6px 0/12px 100% repeat-x;
+    background-color:var(--paper);}
+  .ticket .stripe{height:5px}
+  .ticket .t-body{padding:16px 18px 14px}
+  .ticket h3{font-family:'Bricolage Grotesque';font-size:.98rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
+  .ticket .t-sub{font-size:.7rem;color:var(--ink-soft);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+  .row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
+  .row:last-of-type{border-bottom:none}
+  .row .lbl{color:var(--ink-soft)}
+  .row .val{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-weight:500}
+  .row.net{margin-top:6px;padding-top:9px;border-top:1.5px solid var(--ink)}
+  .row.net .lbl{color:var(--ink);font-weight:600}
+  .row.net .val{font-weight:600;font-size:1rem}
+  .val.pos{color:var(--ok)} .val.neg{color:var(--ndk)}
+
+  .totals{background:var(--shell);color:var(--chalk);border-radius:12px;padding:18px 22px;display:flex;flex-wrap:wrap;gap:28px;margin-bottom:28px}
+  .totals .t{min-width:130px}
+  .totals .t .lbl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#8FA598;margin-bottom:4px}
+  .totals .t .val{font-family:'IBM Plex Mono',monospace;font-size:1.25rem;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .panel{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:18px}
+  .panel h3{font-family:'Bricolage Grotesque';font-size:.95rem;font-weight:800;margin-bottom:12px}
+  .placeholder{padding:40px 20px;text-align:center;color:var(--ink-soft)}
+  .placeholder .disp{font-size:1.2rem;font-weight:800;color:var(--ink);margin-bottom:8px}
+  .placeholder p{font-size:.86rem;max-width:420px;margin:0 auto}
+
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .form-grid .full{grid-column:1 / -1}
+  .seg{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:none;background:#fff;padding:10px 18px;font:inherit;font-size:.88rem;cursor:pointer;color:var(--ink-soft)}
+  .seg button.active{background:var(--shell);color:var(--chalk);font-weight:600}
+  .msg{font-size:.82rem;margin-top:10px;display:none}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--ndk)}
+
+  table.ledger{width:100%;border-collapse:collapse;font-size:.84rem}
+  table.ledger th{text-align:left;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);padding:6px 8px;border-bottom:1.5px solid var(--line)}
+  table.ledger td{padding:8px;border-bottom:1px dashed var(--line);vertical-align:top}
+  table.ledger td.amt{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .pill{display:inline-block;font-size:.66rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .pill.sale{background:#E3EFE6;color:var(--ok)}
+  .pill.expense{background:#F8E8E0;color:var(--warn)}
+  .biz-tag{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:500}
+  .biz-tag i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .del-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.75rem;text-decoration:underline;font-family:inherit}
+  .del-btn:hover{color:var(--ndk)}
+  .loading{color:var(--ink-soft);font-size:.85rem;padding:14px 0}
+
+  @media (max-width:880px){
+    .sidebar{transform:translateX(-100%)}
+    .sidebar.open{transform:translateX(0)}
+    .main{margin-left:0;padding:18px 16px 60px}
+    .menu-btn{display:block}
+    .topbar h1{font-size:1.2rem}
+    .user-chip .who,.user-chip .role{display:none}
+    table.ledger th:nth-child(5),table.ledger td:nth-child(5){display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30}
+  .overlay.show{display:block}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="wordmark">
+      <div class="disp">BACKROOM</div>
+      <div class="tag">where the real running happens</div>
+    </div>
+    <div class="brand-dots" aria-hidden="true">
+      <span style="background:var(--agege)"></span><span style="background:var(--ndk)"></span>
+      <span style="background:var(--breadi)"></span><span style="background:var(--moomoo)"></span>
+    </div>
+    <div class="login-box">
+      <h2>Sign in</h2>
+      <div class="field"><label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@backroom.ng" autocomplete="username"></div>
+      <div class="field"><label for="pass">Password</label>
+        <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-primary" id="loginBtn">Sign in</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+    <div class="login-foot">Agege Burger · Naija Doner Kebab · Breadi da Shayi · Moo Moo Designer Yogurt</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="overlay" id="overlay"></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="disp">BACKROOM</div>
+      <div class="tag">Four businesses · one brain</div>
+    </div>
+    <div id="navContainer"></div>
+    <div class="sb-foot" id="sbFoot">Live · Supabase connected</div>
+  </nav>
+  <main class="main">
+    <div class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="crumb" id="pageCrumb"></div>
+      </div>
+      <div class="user-chip">
+        <div class="avatar" id="avatarTxt">·</div>
+        <div><div class="who" id="userName"></div><div class="role" id="userRole"></div></div>
+      </div>
+      <button class="logout" id="logoutBtn">Log out</button>
+    </div>
+    <div id="pageContent"></div>
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://jwskbvqmkvqokbrhyjcx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xln4QmgZ2Xn9n_335X_25A_pj2WbLjW';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const BIZ = [
+  {key:'agege',  name:'Agege Burger',            sub:'Burgers & grills',  color:'var(--agege)'},
+  {key:'ndk',    name:'Naija Doner Kebab',       sub:'Kebabs & wraps',    color:'var(--ndk)'},
+  {key:'breadi', name:'Breadi da Shayi',         sub:'Bread & tea',       color:'var(--breadi)'},
+  {key:'moomoo', name:'Moo Moo Designer Yogurt', sub:'Yoghurt & parfait', color:'var(--moomoo)'},
+];
+const bizByKey = Object.fromEntries(BIZ.map(b => [b.key, b]));
+
+const EXPENSE_CATEGORIES = ['Ingredients','Packaging','Fuel / Gas','Salaries','Rent','Utilities','Transport','Maintenance','Marketing','Other'];
+
+const NAV = [
+  {group:'Money', items:[
+    {id:'dashboard', label:'Dashboard', roles:['ceo','coo','manager','accountant']},
+    {id:'finance',   label:'Sales & Expenses', roles:['ceo','coo','accountant']},
+    {id:'refunds',   label:'Refunds & Receipts', roles:['ceo','coo','manager','accountant']},
+    {id:'personal',  label:'Personal Expenses', roles:['ceo','coo'], lock:'CEO · COO'},
+  ]},
+  {group:'Store', items:[
+    {id:'stockreq',  label:'Stock Requests', roles:['ceo','coo','manager','accountant','staff']},
+    {id:'stockmon',  label:'Stock Monitor', roles:['ceo','coo','manager','accountant','staff']},
+  ]},
+  {group:'People', items:[
+    {id:'staff',     label:'Staff & Onboarding', roles:['ceo','coo','manager']},
+    {id:'leave',     label:'Leave Requests', roles:['ceo','coo','manager','accountant','staff']},
+    {id:'payroll',   label:'Deductions & Bonuses', roles:['ceo','coo','manager','accountant']},
+    {id:'tasks',     label:'Tasks', roles:['ceo','coo','manager','accountant','staff']},
+    {id:'rosters',   label:'Weekly Rosters', roles:['ceo','coo','manager','staff']},
+  ]},
+  {group:'Reports', items:[
+    {id:'acctrep',   label:'Accountant Reports', roles:['ceo','coo','accountant']},
+    {id:'mgrrep',    label:'Manager Reports', roles:['ceo','coo','manager']},
+  ]},
+  {group:'Kitchen', items:[
+    {id:'sops',      label:'SOPs Library', roles:['ceo','coo','manager','staff']},
+    {id:'recipes',   label:'Recipes', roles:['ceo','coo','manager'], lock:'Locked'},
+    {id:'maint',     label:'Maintenance Log', roles:['ceo','coo','manager','staff']},
+  ]},
+];
+
+const PLACEHOLDERS = {
+  refunds:  ['Refunds & Receipts','Upload a receipt photo or PDF, tag the business, add amount and reason. Status moves submitted \u2192 verified \u2192 refunded.'],
+  personal: ['Personal Expenses','CEO personal, COO personal, and mutual \u2014 with a running settlement balance. Only the two of you see this.'],
+  stockreq: ['Stock Requests','Single items or bulk mode \u2014 add many line items or paste a whole list. Pending \u2192 approved \u2192 purchased \u2192 delivered.'],
+  stockmon: ['Stock Monitor','Every movement in and out of the store per business, with a running balance per item.'],
+  staff:    ['Staff & Onboarding','Each staff member: photo, details, and their own document folder.'],
+  leave:    ['Leave Requests','Staff request from their own account; management approves or declines.'],
+  payroll:  ['Deductions & Bonuses','Per staff, per month, with reason and amount.'],
+  tasks:    ['Tasks','Assign tasks with due dates and status, per business.'],
+  rosters:  ['Weekly Rosters','Upload the weekly roster per business.'],
+  acctrep:  ['Accountant Reports','Daily and weekly report uploads, filterable by business and week.'],
+  mgrrep:   ['Manager Reports','The manager\u2019s weekly uploads, kept separate.'],
+  sops:     ['SOPs Library','All SOPs organised by business.'],
+  recipes:  ['Recipes','The crown jewels. CEO, COO and Manager only.'],
+  maint:    ['Maintenance Log','Log an issue with urgency and a photo; track until fixed.'],
+};
+
+let me = null;            // {id, name, role}
+let currentPeriod = 'week';
+let currentPage = 'dashboard';
+let entryType = 'sale';
+
+const $ = id => document.getElementById(id);
+const naira = n => '\u20A6' + Number(n).toLocaleString('en-NG', {maximumFractionDigits: 2});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- auth ---------- */
+async function enterApp(session){
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+  if (error || !profile){ showLoginError('Signed in, but no profile found. Ask the CEO to set your role.'); await sb.auth.signOut(); return; }
+  me = { id: profile.id, name: profile.full_name || session.user.email, role: profile.role };
+  $('loginScreen').style.display = 'none';
+  $('app').classList.add('active');
+  $('userName').textContent = me.name;
+  $('userRole').textContent = me.role;
+  $('avatarTxt').textContent = me.name.charAt(0).toUpperCase();
+  currentPage = ['ceo','coo','manager','accountant'].includes(me.role) ? 'dashboard' : 'stockreq';
+  buildNav(); render();
+}
+function showLoginError(msg){ const e = $('loginErr'); e.textContent = msg; e.style.display = 'block'; }
+
+$('loginBtn').addEventListener('click', async () => {
+  const email = $('email').value.trim(), password = $('pass').value;
+  if (!email || !password) return showLoginError('Enter your email and password.');
+  $('loginBtn').disabled = true; $('loginErr').style.display = 'none';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  $('loginBtn').disabled = false;
+  if (error) return showLoginError(error.message);
+  enterApp(data.session);
+});
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+
+const { data: { session } } = await sb.auth.getSession();
+if (session) enterApp(session);
+
+/* ---------- nav ---------- */
+$('menuBtn').addEventListener('click', () => toggleMenu());
+$('overlay').addEventListener('click', () => toggleMenu(false));
+function toggleMenu(force){
+  const open = force !== undefined ? force : !$('sidebar').classList.contains('open');
+  $('sidebar').classList.toggle('open', open);
+  $('overlay').classList.toggle('show', open);
+}
+function buildNav(){
+  const c = $('navContainer'); c.innerHTML = '';
+  NAV.forEach(g => {
+    const visible = g.items.filter(i => i.roles.includes(me.role));
+    if (!visible.length) return;
+    const div = document.createElement('div'); div.className = 'nav-group';
+    div.innerHTML = `<h4>${g.group}</h4>`;
+    visible.forEach(i => {
+      const b = document.createElement('button');
+      b.className = 'nav-item' + (i.id === currentPage ? ' active' : '');
+      b.innerHTML = `<span>${i.label}</span>` + (i.lock ? `<span class="lock">${i.lock}</span>` : '');
+      b.onclick = () => { currentPage = i.id; buildNav(); render(); toggleMenu(false); };
+      div.appendChild(b);
+    });
+    c.appendChild(div);
+  });
+}
+
+/* ---------- routing ---------- */
+function render(){
+  const pc = $('pageContent');
+  if (currentPage === 'dashboard'){
+    $('pageTitle').textContent = 'Dashboard';
+    $('pageCrumb').textContent = 'All four businesses at a glance';
+    renderDashboard();
+  } else if (currentPage === 'finance'){
+    $('pageTitle').textContent = 'Sales & Expenses';
+    $('pageCrumb').textContent = 'Log the money in and the money out';
+    renderFinance();
+  } else if (currentPage === 'staff'){
+    $('pageTitle').textContent = 'Staff & Onboarding';
+    $('pageCrumb').textContent = 'Team logins and roles';
+    renderStaff();
+  } else {
+    const [t, d] = PLACEHOLDERS[currentPage];
+    $('pageTitle').textContent = t; $('pageCrumb').textContent = '';
+    pc.innerHTML = `<div class="panel"><div class="placeholder">
+      <div class="disp">${t}</div><p>${d}</p>
+      <p style="margin-top:14px;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase">Coming in the next build</p></div></div>`;
+  }
+}
+
+/* ---------- dashboard ---------- */
+function periodRange(p){
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+  if (p === 'today') return [iso(now), iso(now)];
+  if (p === 'week'){
+    const d = new Date(now); const day = (d.getDay() + 6) % 7; // Monday start
+    d.setDate(d.getDate() - day); return [iso(d), iso(now)];
+  }
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  return [iso(first), iso(now)];
+}
+
+async function renderDashboard(){
+  const pc = $('pageContent');
+  const labels = {today:'Today', week:'This week', month:'This month'};
+  pc.innerHTML = `
+    <div class="period" role="tablist">
+      ${Object.entries(labels).map(([k,l]) =>
+        `<button class="${k===currentPeriod?'active':''}" data-p="${k}">${l}</button>`).join('')}
+    </div>
+    <div id="dashBody"><div class="loading">Adding up the tills…</div></div>`;
+  pc.querySelectorAll('.period button').forEach(b =>
+    b.addEventListener('click', () => { currentPeriod = b.dataset.p; renderDashboard(); }));
+
+  const [from, to] = periodRange(currentPeriod);
+  const { data, error } = await sb.from('finance_entries')
+    .select('business_key, entry_type, amount')
+    .gte('entry_date', from).lte('entry_date', to);
+
+  const body = $('dashBody');
+  if (error){ body.innerHTML = `<div class="panel"><div class="loading">Could not load figures: ${esc(error.message)}</div></div>`; return; }
+
+  const agg = {}; BIZ.forEach(b => agg[b.key] = {rev:0, exp:0});
+  (data || []).forEach(e => {
+    if (!agg[e.business_key]) return;
+    if (e.entry_type === 'sale') agg[e.business_key].rev += Number(e.amount);
+    else agg[e.business_key].exp += Number(e.amount);
+  });
+
+  let totalRev = 0, totalExp = 0;
+  const cards = BIZ.map(b => {
+    const {rev, exp} = agg[b.key]; const net = rev - exp;
+    totalRev += rev; totalExp += exp;
+    return `<div class="ticket">
+      <div class="stripe" style="background:${b.color}"></div>
+      <div class="t-body">
+        <h3>${b.name}</h3><div class="t-sub">${b.sub}</div>
+        <div class="row"><span class="lbl">Revenue</span><span class="val">${naira(rev)}</span></div>
+        <div class="row"><span class="lbl">Expenses</span><span class="val">${naira(exp)}</span></div>
+        <div class="row net"><span class="lbl">Net</span><span class="val ${net>=0?'pos':'neg'}">${naira(net)}</span></div>
+      </div></div>`;
+  }).join('');
+
+  const empty = (data || []).length === 0;
+  body.innerHTML = `
+    <div class="biz-grid">${cards}</div>
+    <div class="totals">
+      <div class="t"><div class="lbl">Combined revenue</div><div class="val">${naira(totalRev)}</div></div>
+      <div class="t"><div class="lbl">Combined expenses</div><div class="val">${naira(totalExp)}</div></div>
+      <div class="t"><div class="lbl">Combined net</div><div class="val" style="color:#9FD8AE">${naira(totalRev-totalExp)}</div></div>
+    </div>
+    ${empty ? `<div class="panel"><div class="placeholder">
+      <div class="disp">Nothing logged yet for this period</div>
+      <p>Once the accountant logs sales and expenses on the Sales &amp; Expenses page, these tickets fill in on their own.</p>
+    </div></div>` : ''}`;
+}
+
+/* ---------- sales & expenses ---------- */
+function renderFinance(){
+  const canWrite = ['ceo','coo','accountant'].includes(me.role);
+  const pc = $('pageContent');
+  pc.innerHTML = `
+    ${canWrite ? `
+    <div class="panel">
+      <h3>New entry</h3>
+      <div style="margin-bottom:14px">
+        <div class="seg">
+          <button id="segSale" class="active">Sale</button>
+          <button id="segExp">Expense</button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label for="fBiz">Business</label>
+          <select id="fBiz">${BIZ.map(b => `<option value="${b.key}">${b.name}</option>`).join('')}</select></div>
+        <div class="field"><label for="fDate">Date</label>
+          <input id="fDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field" id="catWrap" style="display:none"><label for="fCat">Category</label>
+          <select id="fCat">${EXPENSE_CATEGORIES.map(c => `<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label for="fAmt">Amount (\u20A6)</label>
+          <input id="fAmt" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="field full"><label for="fNote">Note (optional)</label>
+          <input id="fNote" type="text" placeholder="e.g. evening shift till, or 2 bags of flour"></div>
+      </div>
+      <button class="btn-primary" id="fSave" style="max-width:220px">Save entry</button>
+      <div class="msg" id="fMsg"></div>
+    </div>` : ''}
+    <div class="panel">
+      <h3>Recent entries</h3>
+      <div id="ledger"><div class="loading">Opening the ledger…</div></div>
+    </div>`;
+
+  if (canWrite){
+    const setType = t => {
+      entryType = t;
+      $('segSale').classList.toggle('active', t === 'sale');
+      $('segExp').classList.toggle('active', t === 'expense');
+      $('catWrap').style.display = t === 'expense' ? 'block' : 'none';
+    };
+    $('segSale').addEventListener('click', () => setType('sale'));
+    $('segExp').addEventListener('click', () => setType('expense'));
+    setType('sale');
+    $('fSave').addEventListener('click', saveEntry);
+  }
+  loadLedger();
+}
+
+async function saveEntry(){
+  const msg = $('fMsg');
+  const amount = parseFloat($('fAmt').value);
+  if (!amount || amount <= 0){
+    msg.className = 'msg err'; msg.style.display = 'block';
+    msg.textContent = 'Enter an amount greater than zero.'; return;
+  }
+  $('fSave').disabled = true;
+  const { error } = await sb.from('finance_entries').insert({
+    business_key: $('fBiz').value,
+    entry_date: $('fDate').value,
+    entry_type: entryType,
+    category: entryType === 'expense' ? $('fCat').value : null,
+    amount,
+    note: $('fNote').value.trim() || null,
+  });
+  $('fSave').disabled = false;
+  msg.style.display = 'block';
+  if (error){ msg.className = 'msg err'; msg.textContent = 'Could not save: ' + error.message; return; }
+  msg.className = 'msg ok';
+  msg.textContent = `${entryType === 'sale' ? 'Sale' : 'Expense'} of ${naira(amount)} saved for ${bizByKey[$('fBiz').value].name}.`;
+  $('fAmt').value = ''; $('fNote').value = '';
+  loadLedger();
+}
+
+async function loadLedger(){
+  const { data, error } = await sb.from('finance_entries')
+    .select('id, business_key, entry_date, entry_type, category, amount, note')
+    .order('entry_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const el = $('ledger');
+  if (error){ el.innerHTML = `<div class="loading">Could not load: ${esc(error.message)}</div>`; return; }
+  if (!data || !data.length){
+    el.innerHTML = `<div class="loading">No entries yet. The first sale you log starts the story.</div>`; return;
+  }
+  const canDelete = ['ceo','coo','accountant'].includes(me.role);
+  el.innerHTML = `<table class="ledger">
+    <thead><tr><th>Date</th><th>Business</th><th>Type</th><th style="text-align:right">Amount</th><th>Note</th>${canDelete?'<th></th>':''}</tr></thead>
+    <tbody>${data.map(e => {
+      const b = bizByKey[e.business_key] || {name:e.business_key, color:'var(--ink-soft)'};
+      return `<tr>
+        <td>${e.entry_date}</td>
+        <td><span class="biz-tag"><i style="background:${b.color}"></i>${b.name}</span></td>
+        <td><span class="pill ${e.entry_type}">${e.entry_type}</span>${e.category ? `<div style="font-size:.72rem;color:var(--ink-soft);margin-top:3px">${esc(e.category)}</div>` : ''}</td>
+        <td class="amt">${naira(e.amount)}</td>
+        <td>${esc(e.note || '')}</td>
+        ${canDelete ? `<td><button class="del-btn" data-id="${e.id}">remove</button></td>` : ''}
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  el.querySelectorAll('.del-btn').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Remove this entry? The dashboard totals will update.')) return;
+    await sb.from('finance_entries').delete().eq('id', b.dataset.id);
+    loadLedger();
+  }));
+}
+
+/* ---------- staff & team logins ---------- */
+const ROLE_LABELS = {ceo:'CEO', coo:'COO', manager:'Manager', accountant:'Accountant', staff:'Staff'};
+
+function renderStaff(){
+  const canCreate = ['ceo','coo','manager'].includes(me.role);
+  const creatableRoles = me.role === 'manager' ? ['staff'] : ['staff','manager','accountant','coo','ceo'];
+  const pc = $('pageContent');
+  pc.innerHTML = `
+    ${canCreate ? `
+    <div class="panel">
+      <h3>Add a team member</h3>
+      <div class="form-grid">
+        <div class="field"><label for="tName">Full name</label>
+          <input id="tName" type="text" placeholder="e.g. Halima Bello"></div>
+        <div class="field"><label for="tEmail">Login email</label>
+          <input id="tEmail" type="email" placeholder="halima@backroom.ng"></div>
+        <div class="field"><label for="tPass">Temporary password</label>
+          <input id="tPass" type="text" placeholder="min. 6 characters"></div>
+        <div class="field"><label for="tRole">Role</label>
+          <select id="tRole">${creatableRoles.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('')}</select></div>
+        <div class="field"><label for="tBiz">Business (optional)</label>
+          <select id="tBiz"><option value="">— All / not fixed —</option>${BIZ.map(b => `<option value="${b.key}">${b.name}</option>`).join('')}</select></div>
+      </div>
+      <button class="btn-primary" id="tCreate" style="max-width:240px">Create login</button>
+      <div class="msg" id="tMsg"></div>
+      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Give the person their email and temporary password — they can log in immediately. ${me.role === 'manager' ? 'As Manager you can create Staff accounts; other roles are created by the CEO or COO.' : ''}</p>
+    </div>` : ''}
+    <div class="panel">
+      <h3>Team</h3>
+      <div id="teamList"><div class="loading">Fetching the team…</div></div>
+    </div>`;
+  if (canCreate) $('tCreate').addEventListener('click', createLogin);
+  loadTeam();
+}
+
+async function createLogin(){
+  const msg = $('tMsg');
+  const show = (cls, text) => { msg.className = 'msg ' + cls; msg.style.display = 'block'; msg.textContent = text; };
+  const full_name = $('tName').value.trim();
+  const email = $('tEmail').value.trim();
+  const password = $('tPass').value;
+  if (!full_name || !email || password.length < 6)
+    return show('err', 'Name, email and a password of at least 6 characters are needed.');
+  $('tCreate').disabled = true;
+  const { data, error } = await sb.functions.invoke('create-staff', {
+    body: { email, password, full_name, role: $('tRole').value, business_key: $('tBiz').value || null }
+  });
+  $('tCreate').disabled = false;
+  const errMsg = error?.message || data?.error;
+  if (errMsg) return show('err', 'Could not create: ' + errMsg);
+  show('ok', `${full_name} can now log in as ${ROLE_LABELS[$('tRole').value]} with ${email}. Remind them to keep the password safe.`);
+  $('tName').value = ''; $('tEmail').value = ''; $('tPass').value = '';
+  loadTeam();
+}
+
+async function loadTeam(){
+  const { data, error } = await sb.from('profiles')
+    .select('id, full_name, role, business_key, created_at')
+    .order('created_at', { ascending: true });
+  const el = $('teamList');
+  if (error){ el.innerHTML = `<div class="loading">Could not load team: ${esc(error.message)}</div>`; return; }
+  if (!data || !data.length){ el.innerHTML = `<div class="loading">No team members yet.</div>`; return; }
+  const canEditRoles = ['ceo','coo'].includes(me.role);
+  el.innerHTML = `<table class="ledger">
+    <thead><tr><th>Name</th><th>Role</th><th>Business</th><th>Joined</th></tr></thead>
+    <tbody>${data.map(p => {
+      const b = p.business_key ? (bizByKey[p.business_key]?.name || p.business_key) : '—';
+      const roleCell = (canEditRoles && p.id !== me.id)
+        ? `<select class="role-edit" data-id="${p.id}" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:7px;font:inherit;font-size:.8rem">
+            ${Object.entries(ROLE_LABELS).map(([v,l]) => `<option value="${v}" ${v===p.role?'selected':''}>${l}</option>`).join('')}
+           </select>`
+        : `${ROLE_LABELS[p.role] || p.role}${p.id === me.id ? ' <span style="font-size:.7rem;color:var(--ink-soft)">(you)</span>' : ''}`;
+      return `<tr>
+        <td>${esc(p.full_name || 'Unnamed')}</td>
+        <td>${roleCell}</td>
+        <td>${esc(b)}</td>
+        <td>${(p.created_at || '').slice(0,10)}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  el.querySelectorAll('.role-edit').forEach(s => s.addEventListener('change', async () => {
+    const { error: e2 } = await sb.from('profiles').update({ role: s.value }).eq('id', s.dataset.id);
+    if (e2){ alert('Could not change role: ' + e2.message); loadTeam(); }
+  }));
+}
+</script>
+</body>
+</html>
