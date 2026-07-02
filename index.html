@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backroom — where the real running happens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --shell:#17251F; --shell-soft:#1F312A; --shell-line:#2C4137;
+    --paper:#FAF7F0; --card:#FFFFFF; --ink:#221F1A; --ink-soft:#6E675C; --line:#E7E0D3;
+    --agege:#E8752E; --ndk:#C03434; --breadi:#C99A3A; --moomoo:#D66A8F;
+    --ok:#3E7C4F; --warn:#B4552B; --chalk:#EDE7DA;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Instrument Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+  .disp{font-family:'Bricolage Grotesque',sans-serif}
+
+  #loginScreen{min-height:100vh;background:var(--shell);display:flex;align-items:center;justify-content:center;padding:24px;
+    background-image:radial-gradient(ellipse at 20% 10%, #21362D 0%, transparent 55%),radial-gradient(ellipse at 85% 90%, #1B2C25 0%, transparent 50%);}
+  .login-card{width:100%;max-width:400px}
+  .wordmark{color:var(--chalk);text-align:center;margin-bottom:6px}
+  .wordmark .disp{font-size:2.5rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .wordmark .tag{font-size:.78rem;color:#8FA598;letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+  .brand-dots{display:flex;justify-content:center;gap:8px;margin:18px 0 26px}
+  .brand-dots span{width:9px;height:9px;border-radius:50%}
+  .login-box{background:var(--paper);border-radius:14px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .login-box h2{font-family:'Bricolage Grotesque';font-size:1.15rem;font-weight:600;margin-bottom:16px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font:inherit;font-size:.95rem;background:#fff;color:var(--ink)}
+  .field textarea{resize:vertical;min-height:70px}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--shell);outline-offset:1px;border-color:var(--shell)}
+  .btn-primary{width:100%;padding:12px;background:var(--shell);color:var(--chalk);border:none;border-radius:9px;font:inherit;font-weight:600;font-size:.95rem;cursor:pointer}
+  .btn-primary:hover{background:#1F332A}
+  .btn-primary:disabled{opacity:.6;cursor:wait}
+  .login-err{color:var(--ndk);font-size:.82rem;margin-top:10px;display:none}
+  .login-foot{text-align:center;color:#6E8578;font-size:.75rem;margin-top:18px}
+
+  #app{display:none;min-height:100vh}
+  #app.active{display:flex}
+  .sidebar{width:236px;background:var(--shell);color:#C9D6CD;flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;overflow-y:auto;z-index:40;transition:transform .25s ease}
+  .sb-head{padding:20px 18px 14px;border-bottom:1px solid var(--shell-line)}
+  .sb-head .disp{color:var(--chalk);font-weight:800;font-size:1.3rem}
+  .sb-head .tag{font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;color:#7E947F;margin-top:3px}
+  .nav-group{padding:14px 10px 4px}
+  .nav-group h4{font-size:.63rem;letter-spacing:.18em;text-transform:uppercase;color:#69806F;padding:0 10px;margin-bottom:6px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:.86rem;cursor:pointer;color:#C9D6CD;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+  .nav-item:hover{background:var(--shell-soft);color:var(--chalk)}
+  .nav-item.active{background:var(--shell-soft);color:var(--chalk);font-weight:600}
+  .nav-item .lock{margin-left:auto;font-size:.68rem;color:#69806F}
+  .sb-foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--shell-line);font-size:.75rem;color:#7E947F}
+  .main{flex:1;margin-left:236px;padding:26px 30px 60px;min-width:0}
+
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+  .topbar h1{font-family:'Bricolage Grotesque';font-size:1.5rem;font-weight:800}
+  .topbar .crumb{font-size:.8rem;color:var(--ink-soft)}
+  .user-chip{margin-left:auto;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--shell);color:var(--chalk);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.8rem}
+  .user-chip .who{font-size:.82rem;font-weight:600;line-height:1.1}
+  .user-chip .role{font-size:.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+  .logout{background:none;border:none;color:var(--ink-soft);font-size:.78rem;cursor:pointer;text-decoration:underline;font-family:inherit}
+  .menu-btn{display:none;background:var(--shell);color:var(--chalk);border:none;border-radius:8px;width:38px;height:38px;font-size:1.1rem;cursor:pointer}
+
+  .period{display:inline-flex;background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:3px;margin-bottom:22px}
+  .period button{border:none;background:none;padding:7px 16px;border-radius:999px;font:inherit;font-size:.82rem;font-weight:500;cursor:pointer;color:var(--ink-soft)}
+  .period button.active{background:var(--shell);color:var(--chalk);font-weight:600}
+
+  .biz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-bottom:26px}
+  .ticket{background:var(--card);border-radius:4px 4px 0 0;box-shadow:0 2px 10px rgba(34,31,26,.07);overflow:hidden}
+  .ticket::after{content:"";display:block;height:10px;
+    background:linear-gradient(-45deg, transparent 5px, var(--card) 0) 0 0/12px 100% repeat-x,
+               linear-gradient(45deg, transparent 5px, var(--card) 0) 6px 0/12px 100% repeat-x;
+    background-color:var(--paper);}
+  .ticket .stripe{height:5px}
+  .ticket .t-body{padding:16px 18px 14px}
+  .ticket h3{font-family:'Bricolage Grotesque';font-size:.98rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
+  .ticket .t-sub{font-size:.7rem;color:var(--ink-soft);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+  .row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
+  .row:last-of-type{border-bottom:none}
+  .row .lbl{color:var(--ink-soft)}
+  .row .val{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-weight:500}
+  .row.net{margin-top:6px;padding-top:9px;border-top:1.5px solid var(--ink)}
+  .row.net .lbl{color:var(--ink);font-weight:600}
+  .row.net .val{font-weight:600;font-size:1rem}
+  .val.pos{color:var(--ok)} .val.neg{color:var(--ndk)}
+
+  .totals{background:var(--shell);color:var(--chalk);border-radius:12px;padding:18px 22px;display:flex;flex-wrap:wrap;gap:28px;margin-bottom:28px}
+  .totals .t{min-width:130px}
+  .totals .t .lbl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#8FA598;margin-bottom:4px}
+  .totals .t .val{font-family:'IBM Plex Mono',monospace;font-size:1.25rem;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .panel{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:18px}
+  .panel h3{font-family:'Bricolage Grotesque';font-size:.95rem;font-weight:800;margin-bottom:12px}
+  .placeholder{padding:40px 20px;text-align:center;color:var(--ink-soft)}
+  .placeholder .disp{font-size:1.2rem;font-weight:800;color:var(--ink);margin-bottom:8px}
+  .placeholder p{font-size:.86rem;max-width:420px;margin:0 auto}
+
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .form-grid .full{grid-column:1 / -1}
+  .seg{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:none;background:#fff;padding:10px 18px;font:inherit;font-size:.88rem;cursor:pointer;color:var(--ink-soft)}
+  .seg button.active{background:var(--shell);color:var(--chalk);font-weight:600}
+  .msg{font-size:.82rem;margin-top:10px;display:none}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--ndk)}
+
+  table.ledger{width:100%;border-collapse:collapse;font-size:.84rem}
+  table.ledger th{text-align:left;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);padding:6px 8px;border-bottom:1.5px solid var(--line)}
+  table.ledger td{padding:8px;border-bottom:1px dashed var(--line);vertical-align:top}
+  table.ledger td.amt{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .pill{display:inline-block;font-size:.66rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .pill.sale{background:#E3EFE6;color:var(--ok)}
+  .pill.expense{background:#F8E8E0;color:var(--warn)}
+  .biz-tag{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:500}
+  .biz-tag i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .del-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.75rem;text-decoration:underline;font-family:inherit}
+  .del-btn:hover{color:var(--ndk)}
+  .loading{color:var(--ink-soft);font-size:.85rem;padding:14px 0}
+
+  /* staff profile cards */
+  .staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+  .staff-card{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:border-color .15s}
+  .staff-card:hover{border-color:var(--shell)}
+  .staff-photo{width:72px;height:72px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;background:var(--paper);border:2px solid var(--line)}
+  .staff-photo.ph{display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque';font-weight:800;font-size:1.5rem;color:var(--shell)}
+  .staff-card .sc-name{font-weight:600;font-size:.92rem}
+  .staff-card .sc-role{font-size:.75rem;color:var(--ink-soft);margin-top:2px}
+  .staff-card .sc-biz{font-size:.7rem;margin-top:8px}
+  .detail-head{display:flex;gap:16px;align-items:center;margin-bottom:8px}
+  .detail-head .staff-photo{margin:0}
+  .back-link{background:none;border:none;color:var(--shell);font:inherit;font-size:.85rem;cursor:pointer;text-decoration:underline;padding:0;margin-bottom:14px}
+
+  @media (max-width:880px){
+    .sidebar{transform:translateX(-100%)}
+    .sidebar.open{transform:translateX(0)}
+    .main{margin-left:0;padding:18px 16px 60px}
+    .menu-btn{display:block}
+    .topbar h1{font-size:1.2rem}
+    .user-chip .who,.user-chip .role{display:none}
+    table.ledger th:nth-child(5),table.ledger td:nth-child(5){display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30}
+  .overlay.show{display:block}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="wordmark">
+      <div class="disp">BACKROOM</div>
+      <div class="tag">where the real running happens</div>
+    </div>
+    <div class="brand-dots" aria-hidden="true">
+      <span style="background:var(--agege)"></span><span style="background:var(--ndk)"></span>
+      <span style="background:var(--breadi)"></span><span style="background:var(--moomoo)"></span>
+    </div>
+    <div class="login-box">
+      <h2>Sign in</h2>
+      <div class="field"><label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@backroom.ng" autocomplete="username"></div>
+      <div class="field"><label for="pass">Password</label>
+        <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-primary" id="loginBtn">Sign in</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+    <div class="login-foot">Agege Burger · Naija Doner Kebab · Breadi da Shayi · Moo Moo Designer Yogurt</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="overlay" id="overlay"></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="disp">BACKROOM</div>
+      <div class="tag">Four businesses · one brain</div>
+    </div>
+    <div id="navContainer"></div>
+    <div class="sb-foot" id="sbFoot">Live · Supabase connected</div>
+  </nav>
+  <main class="main">
+    <div class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="crumb" id="pageCrumb"></div>
+      </div>
+      <div class="user-chip">
+        <div class="avatar" id="avatarTxt">·</div>
+        <div><div class="who" id="userName"></div><div class="role" id="userRole"></div></div>
+      </div>
+      <button class="logout" id="logoutBtn">Log out</button>
+    </div>
+    <div id="pageContent"></div>
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://jwskbvqmkvqokbrhyjcx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xln4QmgZ2Xn9n_335X_25A_pj2WbLjW';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const BIZ = [
+  {key:'agege',  name:'Agege Burger',            sub:'Burgers & grills',  color:'var(--agege)'},
+  {key:'ndk',    name:'Naija Doner Kebab',       sub:'Kebabs & wraps',    color:'var(--ndk)'},
+  {key:'breadi', name:'Breadi da Shayi',         sub:'Bread & tea',       color:'var(--breadi)'},
+  {key:'moomoo', name:'Moo Moo Designer Yogurt', sub:'Yoghurt & parfait', color:'var(--moomoo)'},
+];
+const bizByKey = Object.fromEntries(BIZ.map(b => [b.key, b]));
+
+const EXPENSE_CATEGORIES = ['Ingredients','Packaging','Fuel / Gas','Salaries','Rent','Utilities','Transport','Maintenance','Marketing','Other'];
+
+const ALL = ['ceo','coo','manager','accountant','supervisor','storekeeper','staff'];
+const NAV = [
+  {group:'Home', items:[
+    {id:'notices',     label:'Notice Board', roles:ALL},
+    {id:'leaderboard', label:'Leaderboard', roles:ALL},
+  ]},
+  {group:'Money', items:[
+    {id:'dashboard', label:'Dashboard', roles:['ceo','coo','accountant']},
+    {id:'finance',   label:'Sales & Expenses', roles:['ceo','coo','accountant']},
+    {id:'refunds',   label:'Refunds & Receipts', roles:['ceo','coo','manager','accountant','supervisor','storekeeper']},
+    {id:'personal',  label:'Personal Funds', roles:['ceo','coo','accountant'], lock:'CEO · COO · Acct'},
+  ]},
+  {group:'Store', items:[
+    {id:'stockreq',  label:'Stock Requests', roles:['ceo','coo','manager','accountant','storekeeper']},
+    {id:'stockmon',  label:'Stock Monitor', roles:['ceo','coo','manager','accountant','storekeeper']},
+  ]},
+  {group:'People', items:[
+    {id:'staff',     label:'Staff & Onboarding', roles:['ceo','coo','manager']},
+    {id:'leave',     label:'Leave Requests', roles:['ceo','coo','manager','accountant','supervisor','storekeeper','staff']},
+    {id:'payroll',   label:'Deductions & Bonuses', roles:['ceo','coo','manager','accountant','staff']},
+    {id:'tasks',     label:'Tasks', roles:['ceo','coo','manager','accountant','supervisor','storekeeper','staff']},
+    {id:'rosters',   label:'Weekly Rosters', roles:['ceo','coo','manager','supervisor','staff']},
+  ]},
+  {group:'Reports', items:[
+    {id:'acctrep',   label:'Accountant Reports', roles:['ceo','coo','accountant']},
+    {id:'mgrrep',    label:'Manager Reports', roles:['ceo','coo','manager']},
+  ]},
+  {group:'Owners', items:[
+    {id:'approvals', label:'Approvals', roles:['ceo','coo','accountant']},
+    {id:'decisions', label:'Decisions Log', roles:['ceo','coo']},
+    {id:'activity',  label:'Activity Log', roles:['ceo','coo']},
+  ]},
+  {group:'Kitchen', items:[
+    {id:'sops',      label:'SOPs Library', roles:['ceo','coo','manager','supervisor']},
+    {id:'recipes',   label:'Recipes', roles:['ceo','coo','manager'], lock:'Locked'},
+    {id:'maint',     label:'Maintenance Log', roles:['ceo','coo','manager','accountant']},
+    {id:'infection', label:'Infection Control', roles:['ceo','coo','manager']},
+  ]},
+];
+
+const PLACEHOLDERS = {
+  refunds:  ['Refunds & Receipts','Upload a receipt photo or PDF, tag the business, add amount and reason. Status moves submitted \u2192 verified \u2192 refunded.'],
+  personal: ['Personal Expenses','CEO personal, COO personal, and mutual \u2014 with a running settlement balance. Only the two of you see this.'],
+  stockreq: ['Stock Requests','Single items or bulk mode \u2014 add many line items or paste a whole list. Pending \u2192 approved \u2192 purchased \u2192 delivered.'],
+  stockmon: ['Stock Monitor','Every movement in and out of the store per business, with a running balance per item.'],
+  staff:    ['Staff & Onboarding','Each staff member: photo, details, and their own document folder.'],
+  leave:    ['Leave Requests','Staff request from their own account; management approves or declines.'],
+  payroll:  ['Deductions & Bonuses','Per staff, per month, with reason and amount.'],
+  tasks:    ['Tasks','Assign tasks with due dates and status, per business.'],
+  rosters:  ['Weekly Rosters','Upload the weekly roster per business.'],
+  acctrep:  ['Accountant Reports','Daily and weekly report uploads, filterable by business and week.'],
+  mgrrep:   ['Manager Reports','The manager\u2019s weekly uploads, kept separate.'],
+  sops:     ['SOPs Library','All SOPs organised by business.'],
+  recipes:  ['Recipes','The crown jewels. CEO, COO and Manager only.'],
+  maint:    ['Maintenance Log','Log an issue with urgency and a photo; track until fixed.'],
+};
+
+let me = null;            // {id, name, role}
+let currentPeriod = 'week';
+let currentPage = 'dashboard';
+let entryType = 'sale';
+
+const $ = id => document.getElementById(id);
+const naira = n => '\u20A6' + Number(n).toLocaleString('en-NG', {maximumFractionDigits: 2});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- auth ---------- */
+async function enterApp(session){
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+  if (error || !profile){ showLoginError('Signed in, but no profile found. Ask the CEO to set your role.'); await sb.auth.signOut(); return; }
+  me = { id: profile.id, name: profile.full_name || session.user.email, role: profile.role };
+  $('loginScreen').style.display = 'none';
+  $('app').classList.add('active');
+  $('userName').textContent = me.name;
+  $('userRole').textContent = me.role;
+  $('avatarTxt').textContent = me.name.charAt(0).toUpperCase();
+  currentPage = 'notices';
+  buildNav(); render();
+}
+function showLoginError(msg){ const e = $('loginErr'); e.textContent = msg; e.style.display = 'block'; }
+
+$('loginBtn').addEventListener('click', async () => {
+  const email = $('email').value.trim(), password = $('pass').value;
+  if (!email || !password) return showLoginError('Enter your email and password.');
+  $('loginBtn').disabled = true; $('loginErr').style.display = 'none';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  $('loginBtn').disabled = false;
+  if (error) return showLoginError(error.message);
+  enterApp(data.session);
+});
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+
+const { data: { session } } = await sb.auth.getSession();
+if (session) enterApp(session);
+
+/* ---------- nav ---------- */
+$('menuBtn').addEventListener('click', () => toggleMenu());
+$('overlay').addEventListener('click', () => toggleMenu(false));
+function toggleMenu(force){
+  const open = force !== undefined ? force : !$('sidebar').classList.contains('open');
+  $('sidebar').classList.toggle('open', open);
+  $('overlay').classList.toggle('show', open);
+}
+function buildNav(){
+  const c = $('navContainer'); c.innerHTML = '';
+  NAV.forEach(g => {
+    const visible = g.items.filter(i => i.roles.includes(me.role));
+    if (!visible.length) return;
+    const div = document.createElement('div'); div.className = 'nav-group';
+    div.innerHTML = `<h4>${g.group}</h4>`;
+    visible.forEach(i => {
+      const b = document.createElement('button');
+      b.className = 'nav-item' + (i.id === currentPage ? ' active' : '');
+      b.innerHTML = `<span>${i.label}</span>` + (i.lock ? `<span class="lock">${i.lock}</span>` : '');
+      b.onclick = () => { currentPage = i.id; buildNav(); render(); toggleMenu(false); };
+      div.appendChild(b);
+    });
+    c.appendChild(div);
+  });
+}
+
+/* ---------- routing ---------- */
+function render(){
+  const pc = $('pageContent');
+  if (currentPage === 'dashboard'){
+    $('pageTitle').textContent = 'Dashboard';
+    $('pageCrumb').textContent = 'All four businesses at a glance';
+    renderDashboard();
+  } else if (currentPage === 'finance'){
+    $('pageTitle').textContent = 'Sales & Expenses';
+    $('pageCrumb').textContent = 'Log the money in and the money out';
+    renderFinance();
+  } else if (currentPage === 'staff'){
+    $('pageTitle').textContent = 'Staff & Onboarding';
+    $('pageCrumb').textContent = 'Team logins and roles';
+    renderStaff();
+  } else {
+    const ROUTES = {
+      notices:     ['Notice Board', 'What everyone needs to know', renderNotices],
+      leaderboard: ['Leaderboard', 'Who\u2019s leading this month', renderLeaderboard],
+      stockreq:    ['Stock Requests', 'Single items or a whole list at once', renderStockReq],
+      stockmon:    ['Stock Monitor', 'What comes in, what goes out', renderStockMon],
+      refunds:     ['Refunds & Receipts', 'Upload receipts, track refunds', renderRefunds],
+      tasks:       ['Tasks', 'Who\u2019s doing what', renderTasks],
+      maint:       ['Maintenance Log', 'Log it, track it, fix it', renderMaint],
+      leave:       ['Leave Requests', 'Request time off', renderLeave],
+      payroll:     ['Deductions & Bonuses', 'Adjustments per staff, per month', renderPayroll],
+      personal:    ['Personal Funds', 'Withdrawal requests & approvals', renderPersonal],
+      rosters:     ['Weekly Rosters', 'Upload the week\u2019s roster', renderRosters],
+      acctrep:     ['Accountant Reports', 'Daily & weekly financial reports', renderAcctRep],
+      mgrrep:      ['Manager Reports', 'Weekly manager reports', renderMgrRep],
+      sops:        ['SOPs Library', 'Standard operating procedures', renderSops],
+      recipes:     ['Recipes', 'The crown jewels \u2014 locked', renderRecipes],
+      infection:   ['Infection Control', 'Staff testing & hygiene records', renderInfection],
+      approvals:   ['Approvals', 'Anything over \u20A6500,000 needs both owners', renderApprovals],
+      decisions:   ['Decisions Log', 'Agree it, acknowledge it', renderDecisions],
+      activity:    ['Activity Log', 'The shared history of who did what', renderActivity],
+    };
+    if (ROUTES[currentPage]){
+      const [t, c, fn] = ROUTES[currentPage];
+      $('pageTitle').textContent = t; $('pageCrumb').textContent = c;
+      fn();
+    } else {
+      const [t, d] = PLACEHOLDERS[currentPage];
+      $('pageTitle').textContent = t; $('pageCrumb').textContent = '';
+      pc.innerHTML = `<div class="panel"><div class="placeholder">
+        <div class="disp">${t}</div><p>${d}</p>
+        <p style="margin-top:14px;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase">Coming in the next build</p></div></div>`;
+    }
+  }
+}
+
+/* ---------- dashboard ---------- */
+function periodRange(p){
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+  if (p === 'today') return [iso(now), iso(now)];
+  if (p === 'week'){
+    const d = new Date(now); const day = (d.getDay() + 6) % 7; // Monday start
+    d.setDate(d.getDate() - day); return [iso(d), iso(now)];
+  }
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  return [iso(first), iso(now)];
+}
+
+async function renderDashboard(){
+  const pc = $('pageContent');
+  const labels = {today:'Today', week:'This week', month:'This month'};
+  pc.innerHTML = `
+    <div class="period" role="tablist">
+      ${Object.entries(labels).map(([k,l]) =>
+        `<button class="${k===currentPeriod?'active':''}" data-p="${k}">${l}</button>`).join('')}
+    </div>
+    <div id="dashBody"><div class="loading">Adding up the tills…</div></div>`;
+  pc.querySelectorAll('.period button').forEach(b =>
+    b.addEventListener('click', () => { currentPeriod = b.dataset.p; renderDashboard(); }));
+
+  const [from, to] = periodRange(currentPeriod);
+  const { data, error } = await sb.from('finance_entries')
+    .select('business_key, entry_type, amount')
+    .gte('entry_date', from).lte('entry_date', to);
+
+  const body = $('dashBody');
+  if (error){ body.innerHTML = `<div class="panel"><div class="loading">Could not load figures: ${esc(error.message)}</div></div>`; return; }
+
+  const agg = {}; BIZ.forEach(b => agg[b.key] = {rev:0, exp:0});
+  (data || []).forEach(e => {
+    if (!agg[e.business_key]) return;
+    if (e.entry_type === 'sale') agg[e.business_key].rev += Number(e.amount);
+    else agg[e.business_key].exp += Number(e.amount);
+  });
+
+  let totalRev = 0, totalExp = 0;
+  const cards = BIZ.map(b => {
+    const {rev, exp} = agg[b.key]; const net = rev - exp;
+    totalRev += rev; totalExp += exp;
+    return `<div class="ticket">
+      <div class="stripe" style="background:${b.color}"></div>
+      <div class="t-body">
+        <h3>${b.name}</h3><div class="t-sub">${b.sub}</div>
+        <div class="row"><span class="lbl">Revenue</span><span class="val">${naira(rev)}</span></div>
+        <div class="row"><span class="lbl">Expenses</span><span class="val">${naira(exp)}</span></div>
+        <div class="row net"><span class="lbl">Net</span><span class="val ${net>=0?'pos':'neg'}">${naira(net)}</span></div>
+      </div></div>`;
+  }).join('');
+
+  const empty = (data || []).length === 0;
+  body.innerHTML = `
+    <div class="biz-grid">${cards}</div>
+    <div class="totals">
+      <div class="t"><div class="lbl">Combined revenue</div><div class="val">${naira(totalRev)}</div></div>
+      <div class="t"><div class="lbl">Combined expenses</div><div class="val">${naira(totalExp)}</div></div>
+      <div class="t"><div class="lbl">Combined net</div><div class="val" style="color:#9FD8AE">${naira(totalRev-totalExp)}</div></div>
+    </div>
+    ${empty ? `<div class="panel"><div class="placeholder">
+      <div class="disp">Nothing logged yet for this period</div>
+      <p>Once the accountant logs sales and expenses on the Sales &amp; Expenses page, these tickets fill in on their own.</p>
+    </div></div>` : ''}`;
+}
+
+/* ---------- sales & expenses ---------- */
+function renderFinance(){
+  const canWrite = ['ceo','coo','accountant'].includes(me.role);
+  const pc = $('pageContent');
+  pc.innerHTML = `
+    ${canWrite ? `
+    <div class="panel">
+      <h3>New entry</h3>
+      <div style="margin-bottom:14px">
+        <div class="seg">
+          <button id="segSale" class="active">Sale</button>
+          <button id="segExp">Expense</button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label for="fBiz">Business</label>
+          <select id="fBiz">${BIZ.map(b => `<option value="${b.key}">${b.name}</option>`).join('')}</select></div>
+        <div class="field"><label for="fDate">Date</label>
+          <input id="fDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field" id="catWrap" style="display:none"><label for="fCat">Category</label>
+          <select id="fCat">${EXPENSE_CATEGORIES.map(c => `<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label for="fAmt">Amount (\u20A6)</label>
+          <input id="fAmt" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="field full"><label for="fNote">Note (optional)</label>
+          <input id="fNote" type="text" placeholder="e.g. evening shift till, or 2 bags of flour"></div>
+      </div>
+      <button class="btn-primary" id="fSave" style="max-width:220px">Save entry</button>
+      <div class="msg" id="fMsg"></div>
+    </div>` : ''}
+    <div class="panel">
+      <h3>Recent entries</h3>
+      <div id="ledger"><div class="loading">Opening the ledger…</div></div>
+    </div>`;
+
+  if (canWrite){
+    const setType = t => {
+      entryType = t;
+      $('segSale').classList.toggle('active', t === 'sale');
+      $('segExp').classList.toggle('active', t === 'expense');
+      $('catWrap').style.display = t === 'expense' ? 'block' : 'none';
+    };
+    $('segSale').addEventListener('click', () => setType('sale'));
+    $('segExp').addEventListener('click', () => setType('expense'));
+    setType('sale');
+    $('fSave').addEventListener('click', saveEntry);
+  }
+  loadLedger();
+}
+
+async function saveEntry(){
+  const msg = $('fMsg');
+  const amount = parseFloat($('fAmt').value);
+  if (!amount || amount <= 0){
+    msg.className = 'msg err'; msg.style.display = 'block';
+    msg.textContent = 'Enter an amount greater than zero.'; return;
+  }
+  $('fSave').disabled = true;
+  // ₦500k gate: large expenses go to the co-owner approval queue instead of posting straight away
+  if (entryType === 'expense' && amount >= APPROVAL_THRESHOLD){
+    const payload = { business_key: $('fBiz').value, entry_date: $('fDate').value,
+      entry_type: 'expense', category: $('fCat').value, amount, note: $('fNote').value.trim() || null };
+    const req = ownerSidePreset({ action_type:'expense', payload, amount,
+      business_key: payload.business_key, reason: payload.note, requested_name: me.name });
+    const { error } = await sb.from('approval_requests').insert(req);
+    $('fSave').disabled = false; msg.style.display = 'block';
+    if (error){ msg.className = 'msg err'; msg.textContent = 'Could not send for approval: ' + error.message; return; }
+    msg.className = 'msg ok';
+    msg.textContent = `Expense of ${naira(amount)} is over ${naira(APPROVAL_THRESHOLD)} — sent to the Approvals page. It posts only once both CEO and COO approve.`;
+    await logActivity('requested', 'expense', `${naira(amount)} awaiting approval`, amount, payload.business_key);
+    $('fAmt').value = ''; $('fNote').value = ''; return;
+  }
+  const { error } = await sb.from('finance_entries').insert({
+    business_key: $('fBiz').value,
+    entry_date: $('fDate').value,
+    entry_type: entryType,
+    category: entryType === 'expense' ? $('fCat').value : null,
+    amount,
+    note: $('fNote').value.trim() || null,
+  });
+  $('fSave').disabled = false;
+  msg.style.display = 'block';
+  if (error){ msg.className = 'msg err'; msg.textContent = 'Could not save: ' + error.message; return; }
+  msg.className = 'msg ok';
+  msg.textContent = `${entryType === 'sale' ? 'Sale' : 'Expense'} of ${naira(amount)} saved for ${bizByKey[$('fBiz').value].name}.`;
+  await logActivity(entryType==='sale'?'created':'created', entryType, naira(amount), amount, $('fBiz').value);
+  $('fAmt').value = ''; $('fNote').value = '';
+  loadLedger();
+}
+
+async function loadLedger(){
+  const { data, error } = await sb.from('finance_entries')
+    .select('id, business_key, entry_date, entry_type, category, amount, note')
+    .order('entry_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const el = $('ledger');
+  if (error){ el.innerHTML = `<div class="loading">Could not load: ${esc(error.message)}</div>`; return; }
+  if (!data || !data.length){
+    el.innerHTML = `<div class="loading">No entries yet. The first sale you log starts the story.</div>`; return;
+  }
+  const canDelete = ['ceo','coo','accountant'].includes(me.role);
+  el.innerHTML = `<table class="ledger">
+    <thead><tr><th>Date</th><th>Business</th><th>Type</th><th style="text-align:right">Amount</th><th>Note</th>${canDelete?'<th></th>':''}</tr></thead>
+    <tbody>${data.map(e => {
+      const b = bizByKey[e.business_key] || {name:e.business_key, color:'var(--ink-soft)'};
+      return `<tr>
+        <td>${e.entry_date}</td>
+        <td><span class="biz-tag"><i style="background:${b.color}"></i>${b.name}</span></td>
+        <td><span class="pill ${e.entry_type}">${e.entry_type}</span>${e.category ? `<div style="font-size:.72rem;color:var(--ink-soft);margin-top:3px">${esc(e.category)}</div>` : ''}</td>
+        <td class="amt">${naira(e.amount)}</td>
+        <td>${esc(e.note || '')}</td>
+        ${canDelete ? `<td><button class="del-btn" data-id="${e.id}" data-amt="${e.amount}">remove</button></td>` : ''}
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  el.querySelectorAll('.del-btn').forEach(b => b.addEventListener('click', async () => {
+    const amt = parseFloat(b.dataset.amt) || 0;
+    if (amt >= APPROVAL_THRESHOLD){
+      if (!confirm(`This entry is over ${naira(APPROVAL_THRESHOLD)}. Deleting it needs both CEO and COO to approve. Send the delete request?`)) return;
+      const req = ownerSidePreset({ action_type:'delete_finance', payload:{ id:b.dataset.id },
+        amount:amt, reason:'Delete a finance entry', requested_name: me.name });
+      const { error } = await sb.from('approval_requests').insert(req);
+      if (error) alert('Could not send request: ' + error.message);
+      else { await logActivity('requested','delete_finance',`Delete ${naira(amt)} entry`, amt); alert('Delete request sent to the Approvals page.'); }
+      return;
+    }
+    if (!confirm('Remove this entry? The dashboard totals will update.')) return;
+    await sb.from('finance_entries').delete().eq('id', b.dataset.id);
+    await logActivity('deleted','finance', naira(amt), amt);
+    loadLedger();
+  }));
+}
+
+/* ---------- staff & team logins ---------- */
+const ROLE_LABELS = {ceo:'CEO', coo:'COO', manager:'Manager', accountant:'Accountant', supervisor:'Supervisor', storekeeper:'Storekeeper', staff:'Staff'};
+
+function renderStaff(){
+  const pc = $('pageContent');
+  pc.innerHTML = `
+    <div class="seg" style="margin-bottom:18px">
+      <button id="tabProfiles" class="active">Staff profiles</button>
+      <button id="tabLogins">Logins &amp; roles</button>
+    </div>
+    <div id="staffTab"></div>`;
+  $('tabProfiles').addEventListener('click', ()=>setStaffTab('profiles'));
+  $('tabLogins').addEventListener('click', ()=>setStaffTab('logins'));
+  setStaffTab('profiles');
+}
+function setStaffTab(t){
+  $('tabProfiles').classList.toggle('active', t==='profiles');
+  $('tabLogins').classList.toggle('active', t==='logins');
+  if (t==='profiles') renderProfilesTab(); else renderLoginsTab();
+}
+
+function renderLoginsTab(){
+  const canCreate = ['ceo','coo','manager'].includes(me.role);
+  const creatableRoles = me.role === 'manager' ? ['staff','storekeeper','supervisor'] : ['staff','storekeeper','supervisor','accountant','manager','coo','ceo'];
+  $('staffTab').innerHTML = `
+    ${canCreate ? `
+    <div class="panel">
+      <h3>Add a team member</h3>
+      <div class="form-grid">
+        <div class="field"><label for="tName">Full name</label>
+          <input id="tName" type="text" placeholder="e.g. Halima Bello"></div>
+        <div class="field"><label for="tEmail">Login email</label>
+          <input id="tEmail" type="email" placeholder="halima@backroom.ng"></div>
+        <div class="field"><label for="tPass">Temporary password</label>
+          <input id="tPass" type="text" placeholder="min. 6 characters"></div>
+        <div class="field"><label for="tRole">Role</label>
+          <select id="tRole">${creatableRoles.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('')}</select></div>
+        <div class="field"><label for="tBiz">Business (optional)</label>
+          <select id="tBiz"><option value="">— All / not fixed —</option>${BIZ.map(b => `<option value="${b.key}">${b.name}</option>`).join('')}</select></div>
+      </div>
+      <button class="btn-primary" id="tCreate" style="max-width:240px">Create login</button>
+      <div class="msg" id="tMsg"></div>
+      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Give the person their email and temporary password — they can log in immediately. ${me.role === 'manager' ? 'As Manager you can create Staff accounts; other roles are created by the CEO or COO.' : ''}</p>
+    </div>` : ''}
+    <div class="panel">
+      <h3>Team</h3>
+      <div id="teamList"><div class="loading">Fetching the team…</div></div>
+    </div>`;
+  if (canCreate) $('tCreate').addEventListener('click', createLogin);
+  loadTeam();
+}
+
+async function createLogin(){
+  const msg = $('tMsg');
+  const show = (cls, text) => { msg.className = 'msg ' + cls; msg.style.display = 'block'; msg.textContent = text; };
+  const full_name = $('tName').value.trim();
+  const email = $('tEmail').value.trim();
+  const password = $('tPass').value;
+  const role = $('tRole').value;
+  const business_key = $('tBiz').value || null;
+  if (!full_name || !email || password.length < 6)
+    return show('err', 'Name, email and a password of at least 6 characters are needed.');
+  // Managers may only create staff, enforced here as well as by the eventual profile.
+  const allowed = me.role === 'manager' ? ['staff'] : ['staff','manager','accountant','coo','ceo'];
+  if (!allowed.includes(role)) return show('err', 'You cannot create an account with that role.');
+
+  $('tCreate').disabled = true;
+  show('ok', 'Creating the account…');
+  // Remember who is creating, so we can note it. The signup will replace the current session.
+  const creatorName = me.name;
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { full_name, role, business_key } }
+  });
+  if (error){ $('tCreate').disabled = false; return show('err', 'Could not create: ' + error.message); }
+  // Best-effort: stamp the profile now (the trigger also handles this). If the new session
+  // is active this write succeeds; if not, the trigger already set it from metadata.
+  try {
+    if (data.user) await sb.from('profiles').update({ full_name, role, business_key }).eq('id', data.user.id);
+  } catch(e){}
+  await logActivity('created','staff',`${full_name} as ${ROLE_LABELS[role]} (by ${creatorName})`);
+  // signUp signs the browser in AS the new user, so send everyone back to a clean login.
+  alert(`${full_name} can now log in with ${email} as ${ROLE_LABELS[role]}.\n\nYou'll be returned to the login screen — sign back in with your own account.`);
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function loadTeam(){
+  const { data, error } = await sb.from('profiles')
+    .select('id, full_name, role, business_key, created_at')
+    .order('created_at', { ascending: true });
+  const el = $('teamList');
+  if (error){ el.innerHTML = `<div class="loading">Could not load team: ${esc(error.message)}</div>`; return; }
+  if (!data || !data.length){ el.innerHTML = `<div class="loading">No team members yet.</div>`; return; }
+  const canEditRoles = ['ceo','coo'].includes(me.role);
+  el.innerHTML = `<table class="ledger">
+    <thead><tr><th>Name</th><th>Role</th><th>Business</th><th>Joined</th></tr></thead>
+    <tbody>${data.map(p => {
+      const b = p.business_key ? (bizByKey[p.business_key]?.name || p.business_key) : '—';
+      const roleCell = (canEditRoles && p.id !== me.id)
+        ? `<select class="role-edit" data-id="${p.id}" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:7px;font:inherit;font-size:.8rem">
+            ${Object.entries(ROLE_LABELS).map(([v,l]) => `<option value="${v}" ${v===p.role?'selected':''}>${l}</option>`).join('')}
+           </select>`
+        : `${ROLE_LABELS[p.role] || p.role}${p.id === me.id ? ' <span style="font-size:.7rem;color:var(--ink-soft)">(you)</span>' : ''}`;
+      return `<tr>
+        <td>${esc(p.full_name || 'Unnamed')}</td>
+        <td>${roleCell}</td>
+        <td>${esc(b)}</td>
+        <td>${(p.created_at || '').slice(0,10)}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  el.querySelectorAll('.role-edit').forEach(s => s.addEventListener('change', async () => {
+    const { error: e2 } = await sb.from('profiles').update({ role: s.value }).eq('id', s.dataset.id);
+    if (e2){ alert('Could not change role: ' + e2.message); loadTeam(); }
+    else await logActivity('edited','role',`Set a team member to ${ROLE_LABELS[s.value]||s.value}`);
+  }));
+}
+
+/* ---------- STAFF PROFILES (cards, edit, photo, docs, leave) ---------- */
+function renderProfilesTab(){
+  const canManage = ['ceo','coo','manager'].includes(me.role);
+  $('staffTab').innerHTML = `
+    ${canManage ? `<div class="panel">
+      <h3>Add a staff profile</h3>
+      <div class="form-grid">
+        <div class="field"><label>Full name</label><input id="spName" placeholder="e.g. Halima Bello"></div>
+        <div class="field"><label>Role / title</label><input id="spTitle" placeholder="e.g. Kitchen assistant"></div>
+        <div class="field"><label>Business</label><select id="spBiz">${bizOptions()}</select></div>
+        <div class="field"><label>Phone</label><input id="spPhone" placeholder="080…"></div>
+        <div class="field"><label>Emergency contact</label><input id="spEmerg" placeholder="Name & phone"></div>
+        <div class="field"><label>Bank name</label><input id="spBankName" placeholder="e.g. GTBank"></div>
+        <div class="field"><label>Account name</label><input id="spBankAcctName" placeholder="Name on the account"></div>
+        <div class="field"><label>Account number</label><input id="spBank" placeholder="10-digit number"></div>
+        <div class="field"><label>Start date</label><input id="spStart" type="date"></div>
+        <div class="field"><label>Photo</label><input id="spPhoto" type="file" accept="image/*"></div>
+        <div class="field full"><label>Notes</label><textarea id="spNotes" placeholder="Anything worth recording"></textarea></div>
+      </div>
+      <button class="btn-primary" id="spSave" style="max-width:190px">Add profile</button><div class="msg" id="spMsg"></div>
+    </div>` : ''}
+    <div class="panel"><h3>Staff directory</h3><div id="spGrid"><div class="loading">Loading team…</div></div></div>`;
+  if (canManage) $('spSave').addEventListener('click', async ()=>{
+    const name=$('spName').value.trim(); if(!name) return flash('spMsg','err','Name is required.');
+    $('spSave').disabled=true; flash('spMsg','ok','Saving…');
+    const photo_path = await uploadFile($('spPhoto').files[0]);
+    const { error } = await sb.from('staff_profiles').insert({ full_name:name,
+      role_title:$('spTitle').value.trim()||null, business_key:$('spBiz').value||null,
+      phone:$('spPhone').value.trim()||null, start_date:$('spStart').value||null, photo_path,
+      emergency_contact:$('spEmerg').value.trim()||null, bank_account:$('spBank').value.trim()||null,
+      bank_name:$('spBankName').value.trim()||null, bank_account_name:$('spBankAcctName').value.trim()||null,
+      notes:$('spNotes').value.trim()||null });
+    $('spSave').disabled=false;
+    if(error) return flash('spMsg','err','Error: '+error.message);
+    flash('spMsg','ok','Profile added.'); await logActivity('created','staff_profile',name);
+    ['spName','spTitle','spPhone','spStart','spEmerg','spBank','spBankName','spBankAcctName','spNotes'].forEach(id=>$(id).value=''); $('spPhoto').value='';
+    loadStaffGrid();
+  });
+  loadStaffGrid();
+}
+
+async function loadStaffGrid(){
+  const { data, error } = await sb.from('staff_profiles').select('*').order('full_name');
+  const el=$('spGrid');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No staff profiles yet.</div>`;
+  el.innerHTML=`<div class="staff-grid">${data.map(s=>`
+    <div class="staff-card" data-id="${s.id}">
+      <div class="staff-photo ph" data-photo="${s.photo_path||''}">${esc((s.full_name||'?').charAt(0).toUpperCase())}</div>
+      <div class="sc-name">${esc(s.full_name)}</div>
+      <div class="sc-role">${esc(s.role_title||'—')}</div>
+      <div class="sc-biz"><span class="biz-tag"><i style="background:${bizColor(s.business_key)}"></i>${bizName(s.business_key)}</span></div>
+    </div>`).join('')}</div>`;
+  el.querySelectorAll('.staff-card').forEach(c=>c.addEventListener('click',()=>openStaffDetail(c.dataset.id)));
+  // fill photos
+  el.querySelectorAll('.staff-photo[data-photo]').forEach(async ph=>{
+    if(!ph.dataset.photo) return;
+    const url=await fileURL(ph.dataset.photo);
+    if(url){ ph.classList.remove('ph'); ph.outerHTML=`<img class="staff-photo" src="${url}" alt="">`; }
+  });
+}
+
+async function openStaffDetail(id){
+  const canManage = ['ceo','coo','manager'].includes(me.role);
+  const { data: s } = await sb.from('staff_profiles').select('*').eq('id',id).single();
+  if(!s) return;
+  const photoURL = await fileURL(s.photo_path);
+  const { data: profs } = await sb.from('profiles').select('id, full_name');
+  $('staffTab').innerHTML = `
+    <button class="back-link" id="spBack">← Back to directory</button>
+    <div class="panel">
+      <div class="detail-head">
+        ${photoURL?`<img class="staff-photo" src="${photoURL}" alt="">`:`<div class="staff-photo ph">${esc((s.full_name||'?').charAt(0).toUpperCase())}</div>`}
+        <div><h3 style="margin:0">${esc(s.full_name)}</h3>
+          <div style="font-size:.8rem;color:var(--ink-soft)">${esc(s.role_title||'—')} · ${bizName(s.business_key)}</div></div>
+      </div>
+      ${canManage?`
+      <div class="form-grid" style="margin-top:14px">
+        <div class="field"><label>Full name</label><input id="edName" value="${esc(s.full_name||'')}"></div>
+        <div class="field"><label>Role / title</label><input id="edTitle" value="${esc(s.role_title||'')}"></div>
+        <div class="field"><label>Business</label><select id="edBiz">${BIZ.map(b=>`<option value="${b.key}" ${b.key===s.business_key?'selected':''}>${b.name}</option>`).join('')}<option value="" ${!s.business_key?'selected':''}>— none —</option></select></div>
+        <div class="field"><label>Phone</label><input id="edPhone" value="${esc(s.phone||'')}"></div>
+        <div class="field"><label>Address</label><input id="edAddr" value="${esc(s.address||'')}"></div>
+        <div class="field"><label>Next of kin</label><input id="edKin" value="${esc(s.next_of_kin||'')}"></div>
+        <div class="field"><label>Emergency contact</label><input id="edEmerg" value="${esc(s.emergency_contact||'')}"></div>
+        <div class="field"><label>Bank name</label><input id="edBankName" value="${esc(s.bank_name||'')}"></div>
+        <div class="field"><label>Account name</label><input id="edBankAcctName" value="${esc(s.bank_account_name||'')}"></div>
+        <div class="field"><label>Account number</label><input id="edBank" value="${esc(s.bank_account||'')}"></div>
+        <div class="field"><label>Start date</label><input id="edStart" type="date" value="${s.start_date||''}"></div>
+        <div class="field"><label>Linked login (for leave)</label><select id="edUser"><option value="">— not linked —</option>${(profs||[]).map(p=>`<option value="${p.id}" ${p.id===s.user_id?'selected':''}>${esc(p.full_name||'?')}</option>`).join('')}</select></div>
+        <div class="field full"><label>Notes</label><textarea id="edNotes" placeholder="Anything worth recording about this staff member">${esc(s.notes||'')}</textarea></div>
+        <div class="field"><label>Change photo</label><input id="edPhoto" type="file" accept="image/*"></div>
+      </div>
+      <button class="btn-primary" id="edSave" style="max-width:160px">Save changes</button>
+      <button class="del-btn" id="edDel" style="margin-left:16px;color:var(--ndk)">delete profile</button>
+      <div class="msg" id="edMsg"></div>
+      `:`
+      <div style="font-size:.88rem;line-height:1.9;margin-top:10px">
+        <div><strong>Phone:</strong> ${esc(s.phone||'—')}</div>
+        <div><strong>Address:</strong> ${esc(s.address||'—')}</div>
+        <div><strong>Next of kin:</strong> ${esc(s.next_of_kin||'—')}</div>
+        <div><strong>Emergency contact:</strong> ${esc(s.emergency_contact||'—')}</div>
+        <div><strong>Bank:</strong> ${esc(s.bank_name||'—')} · ${esc(s.bank_account_name||'—')} · ${esc(s.bank_account||'—')}</div>
+        <div><strong>Started:</strong> ${s.start_date||'—'}</div>
+      </div>`}
+    </div>
+    <div class="panel"><h3>Health &amp; infection control</h3>
+      ${canManage?`<div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label>Test / certificate</label><select id="hlType">${['Food handler test','Medical fitness certificate','Hepatitis A/B','Typhoid','Stool / culture test','TB screening','Hygiene training','Other'].map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div class="field"><label>Date done</label><input id="hlDate" type="date"></div>
+        <div class="field"><label>Result</label><select id="hlResult">${['Passed','Cleared','Pending','Failed'].map(r=>`<option>${r}</option>`).join('')}</select></div>
+        <div class="field"><label>Expires</label><input id="hlExp" type="date"></div>
+        <div class="field full"><label>Notes</label><input id="hlNotes" placeholder="optional"></div>
+        <div class="field full"><label>Certificate file</label><input id="hlFile" type="file" accept="image/*,application/pdf"></div>
+      </div><button class="btn-primary" id="hlAdd" style="max-width:150px">Add record</button><div class="msg" id="hlMsg"></div>`:''}
+      <div id="hlList" style="margin-top:12px"><div class="loading">Loading…</div></div>
+    </div>
+    <div class="panel"><h3>Documents</h3>
+      ${canManage?`<div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label>Document title</label><input id="docTitle" placeholder="e.g. ID card, contract"></div>
+        <div class="field"><label>File</label><input id="docFile" type="file"></div>
+      </div><button class="btn-primary" id="docAdd" style="max-width:150px">Add document</button><div class="msg" id="docMsg"></div>`:''}
+      <div id="docList" style="margin-top:12px"><div class="loading">Loading…</div></div>
+    </div>
+    <div class="panel"><h3>Leave requests</h3><div id="spLeave"><div class="loading">Loading…</div></div></div>`;
+  $('spBack').addEventListener('click', renderProfilesTab);
+
+  if (canManage){
+    $('edSave').addEventListener('click', async ()=>{
+      flash('edMsg','ok','Saving…'); $('edSave').disabled=true;
+      let photo_path = s.photo_path;
+      if ($('edPhoto').files[0]) photo_path = await uploadFile($('edPhoto').files[0]) || photo_path;
+      const { error } = await sb.from('staff_profiles').update({
+        full_name:$('edName').value.trim(), role_title:$('edTitle').value.trim()||null,
+        business_key:$('edBiz').value||null, phone:$('edPhone').value.trim()||null,
+        address:$('edAddr').value.trim()||null, next_of_kin:$('edKin').value.trim()||null,
+        emergency_contact:$('edEmerg').value.trim()||null, bank_account:$('edBank').value.trim()||null,
+        bank_name:$('edBankName').value.trim()||null, bank_account_name:$('edBankAcctName').value.trim()||null,
+        notes:$('edNotes').value.trim()||null,
+        start_date:$('edStart').value||null, user_id:$('edUser').value||null, photo_path }).eq('id',id);
+      $('edSave').disabled=false;
+      if(error) return flash('edMsg','err','Error: '+error.message);
+      flash('edMsg','ok','Saved.'); await logActivity('edited','staff_profile',$('edName').value.trim());
+      openStaffDetail(id);
+    });
+    $('edDel').addEventListener('click', async ()=>{
+      if(!confirm('Delete this staff profile? Their documents go too. This cannot be undone.')) return;
+      await sb.from('staff_profiles').delete().eq('id',id);
+      await logActivity('deleted','staff_profile',s.full_name);
+      renderProfilesTab();
+    });
+    $('docAdd').addEventListener('click', async ()=>{
+      if(!$('docFile').files[0]) return flash('docMsg','err','Choose a file.');
+      flash('docMsg','ok','Uploading…'); $('docAdd').disabled=true;
+      const path=await uploadFile($('docFile').files[0]);
+      const { error } = await sb.from('staff_documents').insert({ staff_id:id, title:$('docTitle').value.trim()||'Document', file_path:path });
+      $('docAdd').disabled=false;
+      if(error) return flash('docMsg','err','Error: '+error.message);
+      flash('docMsg','ok','Added.'); $('docTitle').value=''; $('docFile').value='';
+      loadStaffDocs(id);
+    });
+    $('hlAdd').addEventListener('click', async ()=>{
+      if(!$('hlDate').value) return flash('hlMsg','err','Pick the date the test was done.');
+      flash('hlMsg','ok','Saving…'); $('hlAdd').disabled=true;
+      const path = $('hlFile').files[0] ? await uploadFile($('hlFile').files[0]) : null;
+      const { error } = await sb.from('staff_health_records').insert({ staff_id:id,
+        test_type:$('hlType').value, test_date:$('hlDate').value, result:$('hlResult').value,
+        expiry_date:$('hlExp').value||null, notes:$('hlNotes').value.trim()||null, file_path:path });
+      $('hlAdd').disabled=false;
+      if(error) return flash('hlMsg','err','Error: '+error.message);
+      flash('hlMsg','ok','Record added.'); await logActivity('created','health_record',`${$('hlType').value} for ${s.full_name}`);
+      $('hlDate').value='';$('hlExp').value='';$('hlNotes').value='';$('hlFile').value='';
+      loadStaffHealth(id);
+    });
+  }
+  loadStaffDocs(id);
+  loadStaffHealth(id);
+  loadStaffLeave(s);
+}
+
+async function loadStaffDocs(staffId){
+  const { data, error } = await sb.from('staff_documents').select('*').eq('staff_id',staffId).order('created_at',{ascending:false});
+  const el=$('docList'); if(!el) return;
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No documents yet.</div>`;
+  const canManage=['ceo','coo','manager'].includes(me.role);
+  el.innerHTML=(await Promise.all(data.map(async d=>{
+    const url=await fileURL(d.file_path);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)">
+      <span style="font-size:.87rem">${esc(d.title||'Document')}</span>
+      ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell)">open</a>`:''}
+      ${canManage?`<button class="del-btn docDel" data-id="${d.id}" style="color:var(--ndk);margin-left:auto">remove</button>`:''}
+    </div>`;
+  }))).join('');
+  el.querySelectorAll('.docDel').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('staff_documents').delete().eq('id',b.dataset.id); loadStaffDocs(staffId);
+  }));
+}
+
+async function loadStaffHealth(staffId){
+  const { data, error } = await sb.from('staff_health_records').select('*').eq('staff_id',staffId).order('test_date',{ascending:false});
+  const el=$('hlList'); if(!el) return;
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No health records yet. Add food handler tests, medical fitness, and hygiene training here.</div>`;
+  const canManage=['ceo','coo','manager'].includes(me.role);
+  const today=new Date().toISOString().slice(0,10);
+  const soon=new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+  el.innerHTML=(await Promise.all(data.map(async h=>{
+    const url=await fileURL(h.file_path);
+    let expTag='';
+    if(h.expiry_date){
+      if(h.expiry_date<today) expTag=`<span class="pill" style="background:#F8E3E3;color:var(--ndk)">expired ${h.expiry_date}</span>`;
+      else if(h.expiry_date<soon) expTag=`<span class="pill" style="background:#F7EBD8;color:#8A5B16">due ${h.expiry_date}</span>`;
+      else expTag=`<span style="font-size:.74rem;color:var(--ink-soft)">valid to ${h.expiry_date}</span>`;
+    }
+    const rColor=h.result==='Failed'?'var(--ndk)':(h.result==='Pending'?'#8A5B16':'var(--ok)');
+    return `<div style="border-bottom:1px dashed var(--line);padding:10px 0">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <strong style="font-size:.87rem">${esc(h.test_type||'Test')}</strong>
+        <span class="pill" style="background:#EDE7DA;color:${rColor}">${esc(h.result||'')}</span>
+        <span style="font-size:.74rem;color:var(--ink-soft)">${h.test_date||''}</span>
+        <span style="margin-left:auto;display:flex;gap:8px;align-items:center">${expTag}
+          ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell)">file</a>`:''}
+          ${canManage?`<button class="del-btn hlDel" data-id="${h.id}" style="color:var(--ndk)">remove</button>`:''}</span>
+      </div>
+      ${h.notes?`<div style="font-size:.8rem;color:var(--ink-soft);margin-top:3px">${esc(h.notes)}</div>`:''}
+    </div>`;
+  }))).join('');
+  el.querySelectorAll('.hlDel').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('staff_health_records').delete().eq('id',b.dataset.id); loadStaffHealth(staffId);
+  }));
+}
+
+async function loadStaffLeave(s){
+  let q = sb.from('leave_requests').select('*').order('created_at',{ascending:false});
+  q = s.user_id ? q.or(`requester.eq.${s.user_id},staff_name.eq.${s.full_name}`) : q.eq('staff_name', s.full_name);
+  const { data, error } = await q;
+  const el=$('spLeave'); if(!el) return;
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data || !data.length) return el.innerHTML=`<div class="loading">No leave requests from this person yet. When they file leave from their own login, it shows here.</div>`;
+  const canDecide=['ceo','coo','manager'].includes(me.role);
+  el.innerHTML = data.map(l=>`<div style="border-bottom:1px dashed var(--line);padding:10px 0">
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span style="font-size:.84rem;color:var(--ink-soft)">${l.date_from} → ${l.date_to}</span>
+      <span style="margin-left:auto">${statusPill(l.status)}</span>
+    </div>
+    ${l.reason?`<div style="font-size:.83rem;margin-top:3px">${esc(l.reason)}</div>`:''}
+    ${canDecide&&l.status==='pending'?`<div style="margin-top:6px">
+      <button class="del-btn spLvDec" data-id="${l.id}" data-s="approved" style="color:var(--ok)">approve</button> ·
+      <button class="del-btn spLvDec" data-id="${l.id}" data-s="declined" style="color:var(--ndk);margin-left:6px">decline</button></div>`:''}
+  </div>`).join('');
+  el.querySelectorAll('.spLvDec').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('leave_requests').update({status:b.dataset.s}).eq('id',b.dataset.id); loadStaffLeave(s);
+  }));
+}
+
+/* ---------- shared helpers ---------- */
+const has = (...roles) => roles.includes(me.role);
+const isMgmt = () => has('ceo','coo','manager');
+const bizOptions = (all=true) =>
+  (all ? '<option value="">— All businesses —</option>' : '') +
+  BIZ.map(b => `<option value="${b.key}">${b.name}</option>`).join('');
+const bizName = k => k ? (bizByKey[k]?.name || k) : 'All';
+const bizColor = k => k ? (bizByKey[k]?.color || 'var(--ink-soft)') : 'var(--ink-soft)';
+const statusPill = s => `<span class="pill" style="background:#EDE7DA;color:#5a5346">${esc(s)}</span>`;
+function flash(id, cls, text){ const m=$(id); if(!m) return; m.className='msg '+cls; m.style.display='block'; m.textContent=text; }
+async function uploadFile(file){
+  if (!file) return null;
+  const path = `${currentPage}/${Date.now()}_${file.name.replace(/[^\w.\-]/g,'_')}`;
+  const { error } = await sb.storage.from('backroom').upload(path, file);
+  if (error){ alert('Upload failed: ' + error.message); return null; }
+  return path;
+}
+async function fileURL(path){
+  if (!path) return null;
+  const { data } = await sb.storage.from('backroom').createSignedUrl(path, 3600);
+  return data?.signedUrl || null;
+}
+const APPROVAL_THRESHOLD = 500000; // ₦ — above this, both CEO and COO must approve
+async function logActivity(action, entity, detail, amount=null, business_key=null){
+  try { await sb.from('activity_log').insert({ actor_name: me.name, action, entity, detail, amount, business_key }); }
+  catch(e){ /* logging must never block the real action */ }
+}
+function ownerSidePreset(req){ if (me.role==='ceo') req.ceo_ok = me.id; if (me.role==='coo') req.coo_ok = me.id; return req; }
+
+/* ---------- NOTICE BOARD ---------- */
+function renderNotices(){
+  const canPost = isMgmt();
+  $('pageContent').innerHTML = `
+    ${canPost ? `<div class="panel">
+      <h3>Post a notice</h3>
+      <div class="form-grid">
+        <div class="field full"><label for="nTitle">Title</label>
+          <input id="nTitle" type="text" placeholder="e.g. Staff meeting Saturday 9am"></div>
+        <div class="field full"><label for="nBody">Details</label>
+          <textarea id="nBody" placeholder="Write the message everyone should see…"></textarea></div>
+        <div class="field"><label for="nBiz">For which business</label>
+          <select id="nBiz">${bizOptions()}</select></div>
+        <div class="field"><label for="nPin">Pin to top</label>
+          <select id="nPin"><option value="false">No</option><option value="true">Yes</option></select></div>
+      </div>
+      <button class="btn-primary" id="nSave" style="max-width:200px">Post notice</button>
+      <div class="msg" id="nMsg"></div>
+    </div>` : ''}
+    <div class="panel"><h3>Notices</h3><div id="nList"><div class="loading">Loading the board…</div></div></div>`;
+  if (canPost) $('nSave').addEventListener('click', async () => {
+    const title = $('nTitle').value.trim();
+    if (!title) return flash('nMsg','err','Give the notice a title.');
+    $('nSave').disabled = true;
+    const { error } = await sb.from('notices').insert({
+      title, body: $('nBody').value.trim() || null,
+      business_key: $('nBiz').value || null,
+      pinned: $('nPin').value === 'true', posted_name: me.name });
+    $('nSave').disabled = false;
+    if (error) return flash('nMsg','err','Could not post: '+error.message);
+    flash('nMsg','ok','Posted.'); $('nTitle').value=''; $('nBody').value='';
+    loadNotices();
+  });
+  loadNotices();
+}
+async function loadNotices(){
+  const { data, error } = await sb.from('notices').select('*')
+    .order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(50);
+  const el = $('nList');
+  if (error) return el.innerHTML = `<div class="loading">Error: ${esc(error.message)}</div>`;
+  if (!data.length) return el.innerHTML = `<div class="loading">No notices yet.</div>`;
+  const canDel = isMgmt();
+  el.innerHTML = data.map(n => `
+    <div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        ${n.pinned ? '<span style="color:var(--warn);font-size:.8rem">\u2605</span>' : ''}
+        <strong style="font-size:.95rem">${esc(n.title)}</strong>
+        <span class="biz-tag" style="margin-left:auto"><i style="background:${bizColor(n.business_key)}"></i>${bizName(n.business_key)}</span>
+      </div>
+      ${n.body ? `<p style="font-size:.86rem;color:var(--ink);margin:6px 0;white-space:pre-wrap">${esc(n.body)}</p>` : ''}
+      <div style="font-size:.72rem;color:var(--ink-soft)">${esc(n.posted_name||'')} · ${(n.created_at||'').slice(0,10)}
+        ${canDel ? `· <button class="del-btn" data-id="${n.id}">delete</button>` : ''}</div>
+    </div>`).join('');
+  el.querySelectorAll('.del-btn').forEach(b => b.addEventListener('click', async () => {
+    if(!confirm('Delete this notice?')) return;
+    await sb.from('notices').delete().eq('id', b.dataset.id); loadNotices();
+  }));
+}
+
+/* ---------- LEADERBOARD (live from real data) ---------- */
+async function renderLeaderboard(){
+  $('pageContent').innerHTML = `<div id="lbBody"><div class="loading">Tallying the month…</div></div>`;
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const [{data:fin}, {data:tasks}] = await Promise.all([
+    sb.from('finance_entries').select('business_key,entry_type,amount').gte('entry_date',first),
+    sb.from('tasks').select('assigned_name,status'),
+  ]);
+  // business ranking by net
+  const agg = {}; BIZ.forEach(b => agg[b.key]={rev:0,exp:0});
+  (fin||[]).forEach(e => { if(agg[e.business_key]) agg[e.business_key][e.entry_type==='sale'?'rev':'exp'] += Number(e.amount); });
+  const ranked = BIZ.map(b => ({...b, net: agg[b.key].rev-agg[b.key].exp, rev: agg[b.key].rev}))
+    .sort((a,b)=>b.net-a.net);
+  const max = Math.max(1, ...ranked.map(r=>Math.abs(r.net)));
+  const showFigures = has('ceo','coo','accountant');
+  const medals = ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49','']; 
+  const bizRows = ranked.map((r,i) => `
+    <div style="margin:10px 0">
+      <div style="display:flex;justify-content:space-between;font-size:.86rem;margin-bottom:4px">
+        <span><strong>${medals[i]||''} ${r.name}</strong></span>
+        ${showFigures
+          ? `<span class="val ${r.net>=0?'pos':'neg'}" style="font-family:'IBM Plex Mono',monospace">${naira(r.net)}</span>`
+          : `<span style="font-size:.78rem;color:var(--ink-soft)">#${i+1}</span>`}
+      </div>
+      <div style="height:10px;background:var(--paper);border-radius:6px;overflow:hidden">
+        <div style="height:100%;width:${Math.max(4,Math.abs(r.net)/max*100)}%;background:${r.color}"></div>
+      </div>
+    </div>`).join('');
+  // staff ranking by tasks done
+  const done = {}; (tasks||[]).forEach(t => { if(t.status==='done'&&t.assigned_name) done[t.assigned_name]=(done[t.assigned_name]||0)+1; });
+  const staffRanked = Object.entries(done).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const staffRows = staffRanked.length ? staffRanked.map(([name,n],i)=>`
+    <div class="row"><span class="lbl">${medals[i]||''} ${esc(name)}</span><span class="val">${n} done</span></div>`).join('')
+    : `<div class="loading">No completed tasks yet — this fills in as the team ticks off tasks.</div>`;
+  $('lbBody').innerHTML = `
+    ${!showFigures?`<div class="demo-banner" style="background:#F3EDDF;border:1.5px dashed #D8C99E;color:#7A6320;border-radius:10px;padding:10px 16px;font-size:.8rem;margin-bottom:18px">Ranking by performance. Exact figures are visible to owners only.</div>`:''}
+    <div class="panel"><h3>Business of the month${showFigures?' · by net profit':' · standings'}</h3>${bizRows}</div>
+    <div class="panel"><h3>Top team members · tasks completed</h3>${staffRows}</div>`;
+}
+
+/* ---------- STOCK REQUESTS (single + bulk) ---------- */
+function renderStockReq(){
+  $('pageContent').innerHTML = `
+    <div class="panel">
+      <h3>New stock request</h3>
+      <div class="form-grid">
+        <div class="field"><label for="srBiz">Business</label><select id="srBiz">${bizOptions(false)}</select></div>
+        <div class="field"><label for="srTitle">Title</label><input id="srTitle" type="text" placeholder="e.g. Weekend restock"></div>
+      </div>
+      <div style="margin:6px 0 10px"><div class="seg">
+        <button id="srModeList" class="active">Item list</button>
+        <button id="srModeMass">Paste a list</button>
+      </div></div>
+      <div id="srListMode">
+        <div id="srItems"></div>
+        <button class="del-btn" id="srAddRow" style="color:var(--shell)">+ add another item</button>
+      </div>
+      <div id="srMassMode" style="display:none">
+        <div class="field full"><label for="srMass">Write everything here</label>
+          <textarea id="srMass" placeholder="e.g.\n2 bags flour\n1 carton oil\n5kg chicken\n10 packs foil"></textarea></div>
+      </div>
+      <button class="btn-primary" id="srSave" style="max-width:220px;margin-top:8px">Submit request</button>
+      <div class="msg" id="srMsg"></div>
+    </div>
+    <div class="panel"><h3>Requests</h3><div id="srList"><div class="loading">Loading…</div></div></div>`;
+  let mode = 'list';
+  const addRow = (item='',qty='',unit='') => {
+    const d = document.createElement('div'); d.className='form-grid srRow'; d.style.marginBottom='8px';
+    d.innerHTML = `<div class="field" style="margin:0"><input class="srItem" placeholder="Item" value="${esc(item)}"></div>
+      <div class="field" style="margin:0"><input class="srQty" type="number" min="0" placeholder="Qty" value="${qty}"></div>
+      <div class="field" style="margin:0"><input class="srUnit" placeholder="Unit (bag, kg…)" value="${esc(unit)}"></div>`;
+    $('srItems').appendChild(d);
+  };
+  addRow(); addRow();
+  $('srAddRow').addEventListener('click', ()=>addRow());
+  $('srModeList').addEventListener('click', ()=>{mode='list';$('srModeList').classList.add('active');$('srModeMass').classList.remove('active');$('srListMode').style.display='block';$('srMassMode').style.display='none';});
+  $('srModeMass').addEventListener('click', ()=>{mode='mass';$('srModeMass').classList.add('active');$('srModeList').classList.remove('active');$('srMassMode').style.display='block';$('srListMode').style.display='none';});
+  $('srSave').addEventListener('click', async ()=>{
+    $('srSave').disabled=true;
+    const { data:req, error } = await sb.from('stock_requests').insert({
+      business_key:$('srBiz').value, title:$('srTitle').value.trim()||null,
+      mass_note: mode==='mass' ? ($('srMass').value.trim()||null) : null }).select().single();
+    if (error){ $('srSave').disabled=false; return flash('srMsg','err','Could not submit: '+error.message); }
+    if (mode==='list'){
+      const items = [...document.querySelectorAll('.srRow')].map(r=>({
+        request_id:req.id, item:r.querySelector('.srItem').value.trim(),
+        quantity:parseFloat(r.querySelector('.srQty').value)||null, unit:r.querySelector('.srUnit').value.trim()||null
+      })).filter(x=>x.item);
+      if (items.length) await sb.from('stock_request_items').insert(items);
+    }
+    $('srSave').disabled=false;
+    flash('srMsg','ok','Request submitted.'); $('srTitle').value=''; $('srMass').value='';
+    $('srItems').innerHTML=''; addRow(); addRow();
+    loadStockReq();
+  });
+  loadStockReq();
+}
+async function loadStockReq(){
+  const { data, error } = await sb.from('stock_requests')
+    .select('*, stock_request_items(*)').order('created_at',{ascending:false}).limit(40);
+  const el=$('srList');
+  if (error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if (!data.length) return el.innerHTML=`<div class="loading">No requests yet.</div>`;
+  const canManage = has('ceo','coo','manager','accountant');
+  const steps = ['pending','approved','purchased','delivered'];
+  el.innerHTML = data.map(r=>{
+    const items = (r.stock_request_items||[]).map(i=>`<li>${esc(i.item)}${i.quantity?` — ${i.quantity} ${esc(i.unit||'')}`:''}</li>`).join('');
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+        <strong>${esc(r.title||'Request')}</strong>
+        <span style="margin-left:auto">${statusPill(r.status)}</span>
+      </div>
+      ${items?`<ul style="margin:8px 0 0 18px;font-size:.85rem">${items}</ul>`:''}
+      ${r.mass_note?`<p style="white-space:pre-wrap;font-size:.85rem;margin:8px 0 0;background:var(--paper);padding:8px 10px;border-radius:8px">${esc(r.mass_note)}</p>`:''}
+      ${canManage?`<div style="margin-top:8px">${steps.map(s=>`<button class="del-btn srStatus" data-id="${r.id}" data-s="${s}" style="margin-right:10px;${s===r.status?'color:var(--shell);font-weight:600':''}">${s}</button>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.srStatus').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('stock_requests').update({status:b.dataset.s}).eq('id',b.dataset.id); loadStockReq();
+  }));
+}
+
+/* ---------- STOCK MONITOR ---------- */
+function renderStockMon(){
+  $('pageContent').innerHTML = `
+    <div class="panel"><h3>Log movement</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="mvBiz">${bizOptions(false)}</select></div>
+        <div class="field"><label>Item</label><input id="mvItem" placeholder="e.g. Chicken"></div>
+        <div class="field"><label>In or out</label><select id="mvDir"><option value="in">Coming in</option><option value="out">Going out</option></select></div>
+        <div class="field"><label>Quantity</label><input id="mvQty" type="number" min="0"></div>
+        <div class="field"><label>Unit</label><input id="mvUnit" placeholder="kg, bag…"></div>
+        <div class="field full"><label>Note</label><input id="mvNote" placeholder="optional"></div>
+      </div>
+      <button class="btn-primary" id="mvSave" style="max-width:200px">Log it</button><div class="msg" id="mvMsg"></div>
+    </div>
+    <div class="panel"><h3>Recent movements</h3><div id="mvList"><div class="loading">Loading…</div></div></div>`;
+  $('mvSave').addEventListener('click', async ()=>{
+    const qty=parseFloat($('mvQty').value); if(!$('mvItem').value.trim()||!qty) return flash('mvMsg','err','Item and quantity are needed.');
+    $('mvSave').disabled=true;
+    const { error } = await sb.from('stock_movements').insert({
+      business_key:$('mvBiz').value, item:$('mvItem').value.trim(), direction:$('mvDir').value,
+      quantity:qty, unit:$('mvUnit').value.trim()||null, note:$('mvNote').value.trim()||null });
+    $('mvSave').disabled=false;
+    if(error) return flash('mvMsg','err','Error: '+error.message);
+    flash('mvMsg','ok','Logged.'); $('mvItem').value='';$('mvQty').value='';$('mvNote').value='';
+    loadStockMon();
+  });
+  loadStockMon();
+}
+async function loadStockMon(){
+  const { data, error } = await sb.from('stock_movements').select('*').order('moved_at',{ascending:false}).limit(40);
+  const el=$('mvList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No movements yet.</div>`;
+  el.innerHTML=`<table class="ledger"><thead><tr><th>When</th><th>Business</th><th>Item</th><th>Dir</th><th style="text-align:right">Qty</th></tr></thead><tbody>
+    ${data.map(m=>`<tr><td>${(m.moved_at||'').slice(0,10)}</td>
+      <td><span class="biz-tag"><i style="background:${bizColor(m.business_key)}"></i>${bizName(m.business_key)}</span></td>
+      <td>${esc(m.item)}${m.note?`<div style="font-size:.72rem;color:var(--ink-soft)">${esc(m.note)}</div>`:''}</td>
+      <td><span class="pill ${m.direction==='in'?'sale':'expense'}">${m.direction}</span></td>
+      <td class="amt">${m.quantity} ${esc(m.unit||'')}</td></tr>`).join('')}</tbody></table>`;
+}
+
+/* ---------- REFUNDS & RECEIPTS ---------- */
+function renderRefunds(){
+  $('pageContent').innerHTML = `
+    <div class="panel"><h3>New refund / receipt</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="rfBiz">${bizOptions(false)}</select></div>
+        <div class="field"><label>Amount (\u20A6)</label><input id="rfAmt" type="number" min="0" step="0.01"></div>
+        <div class="field full"><label>Reason</label><input id="rfReason" placeholder="e.g. spoiled delivery returned"></div>
+        <div class="field full"><label>Receipt (photo or PDF)</label><input id="rfFile" type="file" accept="image/*,application/pdf"></div>
+      </div>
+      <button class="btn-primary" id="rfSave" style="max-width:200px">Submit</button><div class="msg" id="rfMsg"></div>
+    </div>
+    <div class="panel"><h3>Refunds</h3><div id="rfList"><div class="loading">Loading…</div></div></div>`;
+  $('rfSave').addEventListener('click', async ()=>{
+    const amt=parseFloat($('rfAmt').value); if(!amt) return flash('rfMsg','err','Enter an amount.');
+    $('rfSave').disabled=true; flash('rfMsg','ok','Uploading…');
+    const path = await uploadFile($('rfFile').files[0]);
+    if (amt >= APPROVAL_THRESHOLD){
+      const payload = { business_key:$('rfBiz').value, amount:amt, reason:$('rfReason').value.trim()||null, receipt_path:path };
+      const req = ownerSidePreset({ action_type:'refund', payload, amount:amt,
+        business_key:payload.business_key, reason:payload.reason, requested_name:me.name });
+      const { error } = await sb.from('approval_requests').insert(req);
+      $('rfSave').disabled=false;
+      if(error) return flash('rfMsg','err','Could not send for approval: '+error.message);
+      flash('rfMsg','ok',`Refund of ${naira(amt)} is over ${naira(APPROVAL_THRESHOLD)} — sent to Approvals. It records only once both owners approve.`);
+      await logActivity('requested','refund',`${naira(amt)} awaiting approval`, amt, payload.business_key);
+      $('rfAmt').value='';$('rfReason').value='';$('rfFile').value=''; return;
+    }
+    const { error } = await sb.from('refunds').insert({
+      business_key:$('rfBiz').value, amount:amt, reason:$('rfReason').value.trim()||null, receipt_path:path });
+    $('rfSave').disabled=false;
+    if(error) return flash('rfMsg','err','Error: '+error.message);
+    flash('rfMsg','ok','Submitted.'); await logActivity('created','refund',naira(amt),amt,$('rfBiz').value);
+    $('rfAmt').value='';$('rfReason').value='';$('rfFile').value='';
+    loadRefunds();
+  });
+  loadRefunds();
+}
+async function loadRefunds(){
+  const { data, error } = await sb.from('refunds').select('*').order('created_at',{ascending:false}).limit(40);
+  const el=$('rfList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No refunds yet.</div>`;
+  const canManage = has('ceo','coo','accountant');
+  const steps=['submitted','verified','refunded','rejected'];
+  el.innerHTML = (await Promise.all(data.map(async r=>{
+    const url = await fileURL(r.receipt_path);
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+        <strong class="mono">${naira(r.amount||0)}</strong>
+        <span style="margin-left:auto">${statusPill(r.status)}</span>
+      </div>
+      <div style="font-size:.85rem;margin-top:4px">${esc(r.reason||'')}</div>
+      ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell)">view receipt</a>`:'<span style="font-size:.75rem;color:var(--ink-soft)">no file</span>'}
+      ${canManage?`<div style="margin-top:6px">${steps.map(s=>`<button class="del-btn rfStatus" data-id="${r.id}" data-s="${s}" style="margin-right:10px;${s===r.status?'color:var(--shell);font-weight:600':''}">${s}</button>`).join('')}</div>`:''}
+    </div>`;
+  }))).join('');
+  el.querySelectorAll('.rfStatus').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('refunds').update({status:b.dataset.s}).eq('id',b.dataset.id); loadRefunds();
+  }));
+}
+
+/* ---------- TASKS ---------- */
+function renderTasks(){
+  const canAssign = isMgmt();
+  $('pageContent').innerHTML = `
+    ${canAssign?`<div class="panel"><h3>Assign a task</h3>
+      <div class="form-grid">
+        <div class="field full"><label>Task</label><input id="tkTitle" placeholder="What needs doing"></div>
+        <div class="field"><label>Business</label><select id="tkBiz">${bizOptions()}</select></div>
+        <div class="field"><label>Assign to</label><select id="tkWho"><option value="">— pick —</option></select></div>
+        <div class="field"><label>Due</label><input id="tkDue" type="date"></div>
+      </div>
+      <button class="btn-primary" id="tkSave" style="max-width:180px">Assign</button><div class="msg" id="tkMsg"></div>
+    </div>`:''}
+    <div class="panel"><h3>Tasks</h3><div id="tkList"><div class="loading">Loading…</div></div></div>`;
+  if (canAssign){
+    sb.from('profiles').select('id,full_name').then(({data})=>{
+      if(data) $('tkWho').innerHTML = '<option value="">— pick —</option>'+data.map(p=>`<option value="${p.id}">${esc(p.full_name||'?')}</option>`).join('');
+    });
+    $('tkSave').addEventListener('click', async ()=>{
+      if(!$('tkTitle').value.trim()) return flash('tkMsg','err','Describe the task.');
+      const whoSel = $('tkWho'); const name = whoSel.value ? whoSel.options[whoSel.selectedIndex].text : null;
+      $('tkSave').disabled=true;
+      const { error } = await sb.from('tasks').insert({ title:$('tkTitle').value.trim(),
+        business_key:$('tkBiz').value||null, assigned_to:whoSel.value||null, assigned_name:name,
+        due_date:$('tkDue').value||null });
+      $('tkSave').disabled=false;
+      if(error) return flash('tkMsg','err','Error: '+error.message);
+      flash('tkMsg','ok','Assigned.'); $('tkTitle').value='';$('tkDue').value='';
+      loadTasks();
+    });
+  }
+  loadTasks();
+}
+async function loadTasks(){
+  const { data, error } = await sb.from('tasks').select('*').order('created_at',{ascending:false}).limit(50);
+  const el=$('tkList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No tasks yet.</div>`;
+  const next={todo:'in_progress',in_progress:'done',done:'todo'};
+  el.innerHTML = data.map(t=>`<div style="border-bottom:1px dashed var(--line);padding:10px 0;display:flex;gap:10px;align-items:baseline">
+    <div style="flex:1"><strong style="font-size:.9rem;${t.status==='done'?'text-decoration:line-through;color:var(--ink-soft)':''}">${esc(t.title)}</strong>
+      <div style="font-size:.72rem;color:var(--ink-soft)">${bizName(t.business_key)} · ${esc(t.assigned_name||'unassigned')}${t.due_date?` · due ${t.due_date}`:''}</div></div>
+    <button class="del-btn tkStatus" data-id="${t.id}" data-s="${next[t.status]}">${statusPill(t.status)}</button>
+  </div>`).join('');
+  el.querySelectorAll('.tkStatus').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('tasks').update({status:b.dataset.s}).eq('id',b.dataset.id); loadTasks();
+  }));
+}
+
+/* ---------- MAINTENANCE ---------- */
+function renderMaint(){
+  $('pageContent').innerHTML = `
+    <div class="panel"><h3>Log an issue</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="mtBiz">${bizOptions(false)}</select></div>
+        <div class="field"><label>Urgency</label><select id="mtUrg"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Low</option></select></div>
+        <div class="field full"><label>What's wrong</label><input id="mtIssue" placeholder="e.g. doner grill heating unevenly"></div>
+        <div class="field full"><label>Photo (optional)</label><input id="mtFile" type="file" accept="image/*"></div>
+      </div>
+      <button class="btn-primary" id="mtSave" style="max-width:180px">Log issue</button><div class="msg" id="mtMsg"></div>
+    </div>
+    <div class="panel"><h3>Issues</h3><div id="mtList"><div class="loading">Loading…</div></div></div>`;
+  $('mtSave').addEventListener('click', async ()=>{
+    if(!$('mtIssue').value.trim()) return flash('mtMsg','err','Describe the issue.');
+    $('mtSave').disabled=true; flash('mtMsg','ok','Saving…');
+    const path=await uploadFile($('mtFile').files[0]);
+    const { error } = await sb.from('maintenance_issues').insert({
+      business_key:$('mtBiz').value, issue:$('mtIssue').value.trim(), urgency:$('mtUrg').value, photo_path:path });
+    $('mtSave').disabled=false;
+    if(error) return flash('mtMsg','err','Error: '+error.message);
+    flash('mtMsg','ok','Logged.'); $('mtIssue').value='';$('mtFile').value='';
+    loadMaint();
+  });
+  loadMaint();
+}
+async function loadMaint(){
+  const { data, error } = await sb.from('maintenance_issues').select('*').order('created_at',{ascending:false}).limit(40);
+  const el=$('mtList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No issues logged.</div>`;
+  const canManage=isMgmt(); const steps=['open','in_progress','fixed'];
+  el.innerHTML = (await Promise.all(data.map(async m=>{
+    const url=await fileURL(m.photo_path);
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(m.business_key)}"></i>${bizName(m.business_key)}</span>
+        ${m.urgency==='urgent'?'<span class="pill" style="background:#F8E3E3;color:var(--ndk)">urgent</span>':''}
+        <span style="margin-left:auto">${statusPill(m.status)}</span>
+      </div>
+      <div style="font-size:.88rem;margin-top:4px">${esc(m.issue)}</div>
+      ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell)">view photo</a>`:''}
+      ${canManage?`<div style="margin-top:6px">${steps.map(s=>`<button class="del-btn mtStatus" data-id="${m.id}" data-s="${s}" style="margin-right:10px;${s===m.status?'color:var(--shell);font-weight:600':''}">${s}</button>`).join('')}</div>`:''}
+    </div>`;
+  }))).join('');
+  el.querySelectorAll('.mtStatus').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('maintenance_issues').update({status:b.dataset.s}).eq('id',b.dataset.id); loadMaint();
+  }));
+}
+
+/* ---------- LEAVE ---------- */
+function renderLeave(){
+  $('pageContent').innerHTML = `
+    <div class="panel"><h3>Request leave</h3>
+      <div class="form-grid">
+        <div class="field"><label>From</label><input id="lvFrom" type="date"></div>
+        <div class="field"><label>To</label><input id="lvTo" type="date"></div>
+        <div class="field"><label>Business</label><select id="lvBiz">${bizOptions()}</select></div>
+        <div class="field full"><label>Reason</label><input id="lvReason" placeholder="optional"></div>
+      </div>
+      <button class="btn-primary" id="lvSave" style="max-width:200px">Submit request</button><div class="msg" id="lvMsg"></div>
+    </div>
+    <div class="panel"><h3>Requests</h3><div id="lvList"><div class="loading">Loading…</div></div></div>`;
+  $('lvSave').addEventListener('click', async ()=>{
+    if(!$('lvFrom').value||!$('lvTo').value) return flash('lvMsg','err','Pick both dates.');
+    $('lvSave').disabled=true;
+    const { error } = await sb.from('leave_requests').insert({
+      staff_name:me.name, business_key:$('lvBiz').value||null,
+      date_from:$('lvFrom').value, date_to:$('lvTo').value, reason:$('lvReason').value.trim()||null });
+    $('lvSave').disabled=false;
+    if(error) return flash('lvMsg','err','Error: '+error.message);
+    flash('lvMsg','ok','Submitted.'); $('lvReason').value='';
+    loadLeave();
+  });
+  loadLeave();
+}
+async function loadLeave(){
+  const { data, error } = await sb.from('leave_requests').select('*').order('created_at',{ascending:false}).limit(40);
+  const el=$('lvList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No requests yet.</div>`;
+  const canDecide=isMgmt();
+  el.innerHTML = data.map(l=>`<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <strong style="font-size:.9rem">${esc(l.staff_name||'?')}</strong>
+      <span style="font-size:.8rem;color:var(--ink-soft)">${l.date_from} → ${l.date_to}</span>
+      <span style="margin-left:auto">${statusPill(l.status)}</span>
+    </div>
+    ${l.reason?`<div style="font-size:.83rem;margin-top:3px">${esc(l.reason)}</div>`:''}
+    ${canDecide&&l.status==='pending'?`<div style="margin-top:6px">
+      <button class="del-btn lvDec" data-id="${l.id}" data-s="approved" style="color:var(--ok)">approve</button> ·
+      <button class="del-btn lvDec" data-id="${l.id}" data-s="declined" style="color:var(--ndk);margin-left:6px">decline</button></div>`:''}
+  </div>`).join('');
+  el.querySelectorAll('.lvDec').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('leave_requests').update({status:b.dataset.s}).eq('id',b.dataset.id); loadLeave();
+  }));
+}
+
+/* ---------- DEDUCTIONS & BONUSES ---------- */
+function renderPayroll(){
+  const canManagePay = has('ceo','coo','manager','accountant');
+  $('pageContent').innerHTML = `
+    ${canManagePay?`<div class="panel"><h3>Add adjustment</h3>
+      <div class="form-grid">
+        <div class="field"><label>Staff name</label><input id="pyName" placeholder="Whose pay"></div>
+        <div class="field"><label>Type</label><select id="pyKind"><option value="bonus">Bonus</option><option value="deduction">Deduction</option></select></div>
+        <div class="field"><label>Amount (\u20A6)</label><input id="pyAmt" type="number" min="0"></div>
+        <div class="field"><label>Month</label><input id="pyMonth" type="month"></div>
+        <div class="field full"><label>Reason</label><input id="pyReason" placeholder="optional"></div>
+      </div>
+      <button class="btn-primary" id="pySave" style="max-width:180px">Save</button><div class="msg" id="pyMsg"></div>
+    </div>`:`<div class="demo-banner" style="background:#F3EDDF;border:1.5px dashed #D8C99E;color:#7A6320;border-radius:10px;padding:10px 16px;font-size:.8rem;margin-bottom:18px">These are your own deductions and bonuses.</div>`}
+    <div class="panel"><h3>${canManagePay?'Adjustments':'My deductions & bonuses'}</h3><div id="pyList"><div class="loading">Loading…</div></div></div>`;
+  if(canManagePay) $('pySave').addEventListener('click', async ()=>{
+    const amt=parseFloat($('pyAmt').value); if(!$('pyName').value.trim()||!amt) return flash('pyMsg','err','Name and amount needed.');
+    const mon=$('pyMonth').value?`${$('pyMonth').value}-01`:new Date().toISOString().slice(0,8)+'01';
+    $('pySave').disabled=true;
+    const { error } = await sb.from('payroll_adjustments').insert({
+      staff_name:$('pyName').value.trim(), kind:$('pyKind').value, amount:amt, month:mon, reason:$('pyReason').value.trim()||null });
+    $('pySave').disabled=false;
+    if(error) return flash('pyMsg','err','Error: '+error.message);
+    flash('pyMsg','ok','Saved.'); await logActivity('created','payroll',`${$('pyKind').value} ${naira(amt)} for ${$('pyName').value.trim()}`,amt);
+    $('pyName').value='';$('pyAmt').value='';$('pyReason').value='';
+    loadPayroll(canManagePay);
+  });
+  loadPayroll(canManagePay);
+}
+async function loadPayroll(canManagePay){
+  let q = sb.from('payroll_adjustments').select('*').order('month',{ascending:false}).limit(60);
+  if (!canManagePay) q = q.eq('staff_name', me.name);   // staff: own rows only (RLS also enforces this)
+  const { data, error } = await q;
+  const el=$('pyList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">Nothing yet.</div>`;
+  el.innerHTML=`<table class="ledger"><thead><tr>${canManagePay?'<th>Staff</th>':''}<th>Month</th><th>Type</th><th style="text-align:right">Amount</th><th>Reason</th></tr></thead><tbody>
+    ${data.map(p=>`<tr>${canManagePay?`<td>${esc(p.staff_name)}</td>`:''}<td>${(p.month||'').slice(0,7)}</td>
+      <td><span class="pill ${p.kind==='bonus'?'sale':'expense'}">${p.kind}</span></td>
+      <td class="amt">${naira(p.amount)}</td><td>${esc(p.reason||'')}</td></tr>`).join('')}</tbody></table>`;
+}
+
+/* ---------- PERSONAL FUNDS (withdrawal requests, dual approval) ---------- */
+function renderPersonal(){
+  const isOwner = has('ceo','coo');
+  $('pageContent').innerHTML = `
+    ${isOwner?`<div class="panel"><h3>Request a withdrawal</h3>
+      <div class="form-grid">
+        <div class="field"><label>Amount (\u20A6)</label><input id="pwAmt" type="number" min="0" step="0.01"></div>
+        <div class="field"><label>Date</label><input id="pwDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field full"><label>Reason for withdrawal</label><input id="pwReason" placeholder="e.g. school fees, personal draw"></div>
+      </div>
+      <button class="btn-primary" id="pwSave" style="max-width:200px">Send for approval</button><div class="msg" id="pwMsg"></div>
+      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Goes to the other owner and the accountant. It only counts once both approve.</p>
+    </div>`:`<div class="demo-banner" style="background:#F3EDDF;border:1.5px dashed #D8C99E;color:#7A6320;border-radius:10px;padding:10px 16px;font-size:.8rem;margin-bottom:18px">You approve owner withdrawal requests here. Owners raise them.</div>`}
+    <div id="pwMonthly"></div>
+    <div class="panel"><h3>Waiting for approval</h3><div id="pwPending"><div class="loading">Loading…</div></div></div>
+    <div class="panel"><h3>Approved withdrawals</h3><div id="pwApproved"><div class="loading">Loading…</div></div></div>`;
+  if(isOwner) $('pwSave').addEventListener('click', async ()=>{
+    const amt=parseFloat($('pwAmt').value); if(!amt) return flash('pwMsg','err','Enter an amount.');
+    if(!$('pwReason').value.trim()) return flash('pwMsg','err','Add a reason for the withdrawal.');
+    $('pwSave').disabled=true;
+    const { error } = await sb.from('personal_withdrawals').insert({
+      requester_role:me.role, requester_name:me.name, amount:amt,
+      reason:$('pwReason').value.trim(), request_date:$('pwDate').value });
+    $('pwSave').disabled=false;
+    if(error) return flash('pwMsg','err','Error: '+error.message);
+    flash('pwMsg','ok',`Request for ${naira(amt)} sent to the other owner and the accountant.`);
+    await logActivity('requested','withdrawal',`${naira(amt)} — ${$('pwReason').value.trim()}`, amt);
+    $('pwAmt').value='';$('pwReason').value='';
+    loadPersonal();
+  });
+  loadPersonal();
+}
+async function loadPersonal(){
+  const { data, error } = await sb.from('personal_withdrawals').select('*').order('created_at',{ascending:false}).limit(80);
+  if(error){ $('pwPending').innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`; return; }
+  const rows=data||[];
+  const pending=rows.filter(r=>r.status==='pending');
+  const approved=rows.filter(r=>r.status==='approved');
+
+  // monthly tally per owner (this month)
+  const ym=new Date().toISOString().slice(0,7);
+  const tally={ceo:{req:0,appr:0},coo:{req:0,appr:0}};
+  rows.forEach(r=>{
+    if((r.request_date||'').slice(0,7)!==ym) return;
+    if(!tally[r.requester_role]) return;
+    tally[r.requester_role].req+=Number(r.amount);
+    if(r.status==='approved') tally[r.requester_role].appr+=Number(r.amount);
+  });
+  $('pwMonthly').innerHTML=`<div class="totals" style="margin-bottom:18px">
+    <div class="t"><div class="lbl">CEO requested this month</div><div class="val">${naira(tally.ceo.req)}</div></div>
+    <div class="t"><div class="lbl">CEO approved this month</div><div class="val" style="color:#9FD8AE">${naira(tally.ceo.appr)}</div></div>
+    <div class="t"><div class="lbl">COO requested this month</div><div class="val">${naira(tally.coo.req)}</div></div>
+    <div class="t"><div class="lbl">COO approved this month</div><div class="val" style="color:#9FD8AE">${naira(tally.coo.appr)}</div></div>
+  </div>`;
+
+  // pending cards with approval state
+  const pendCard=r=>{
+    const otherOwner = r.requester_role==='ceo'?'COO':'CEO';
+    const partyTag = r.party_ok?`${otherOwner} \u2713`:`${otherOwner} \u2014`;
+    const acctTag = r.accountant_ok?'Accountant \u2713':'Accountant \u2014';
+    // can I approve? accountant fills accountant slot; the *other* owner fills party slot; requester can't approve
+    const canAcct = me.role==='accountant' && !r.accountant_ok;
+    const canParty = has('ceo','coo') && me.role!==r.requester_role && !r.party_ok;
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <strong>${esc(r.requester_role?.toUpperCase())} — ${naira(r.amount)}</strong>
+        <span style="font-size:.8rem;color:var(--ink-soft)">${r.request_date||''}</span>
+        <span style="margin-left:auto;font-size:.78rem">
+          <span style="color:${r.party_ok?'var(--ok)':'var(--ink-soft)'}">${partyTag}</span> &nbsp;
+          <span style="color:${r.accountant_ok?'var(--ok)':'var(--ink-soft)'}">${acctTag}</span></span>
+      </div>
+      <div style="font-size:.84rem;margin-top:3px">${esc(r.reason||'')}</div>
+      ${(canAcct||canParty)?`<div style="margin-top:8px">
+        <button class="btn-primary pwAppr" data-id="${r.id}" data-slot="${canAcct?'acct':'party'}" style="max-width:120px;width:auto;display:inline-block;padding:8px 16px">Approve</button>
+        <button class="del-btn pwRej" data-id="${r.id}" style="color:var(--ndk);margin-left:14px">reject</button></div>`
+        : `<div style="font-size:.74rem;color:var(--ink-soft);margin-top:6px">${me.role===r.requester_role?'Your request — waiting on the other owner and the accountant.':'Waiting on the remaining approver.'}</div>`}
+    </div>`;
+  };
+  $('pwPending').innerHTML = pending.length ? pending.map(pendCard).join('') : `<div class="loading">Nothing waiting.</div>`;
+
+  // approved list (shows on requester's page with date + sum)
+  $('pwApproved').innerHTML = approved.length
+    ? `<table class="ledger"><thead><tr><th>Approved</th><th>Owner</th><th style="text-align:right">Amount</th><th>Reason</th></tr></thead><tbody>
+        ${approved.map(r=>`<tr><td>${r.approved_date||''}</td><td>${esc((r.requester_role||'').toUpperCase())}</td>
+          <td class="amt">${naira(r.amount)}</td><td>${esc(r.reason||'')}</td></tr>`).join('')}</tbody></table>`
+    : `<div class="loading">No approved withdrawals yet.</div>`;
+
+  document.querySelectorAll('.pwAppr').forEach(b=>b.addEventListener('click',()=>approveWithdrawal(b.dataset.id,b.dataset.slot)));
+  document.querySelectorAll('.pwRej').forEach(b=>b.addEventListener('click',()=>rejectWithdrawal(b.dataset.id)));
+}
+async function approveWithdrawal(id, slot){
+  const upd = slot==='acct' ? { accountant_ok: me.id } : { party_ok: me.id };
+  await sb.from('personal_withdrawals').update(upd).eq('id',id);
+  const { data:r } = await sb.from('personal_withdrawals').select('*').eq('id',id).single();
+  await logActivity('approved','withdrawal',`${naira(r.amount)} — ${esc((r.requester_role||'').toUpperCase())}`, r.amount);
+  if (r.party_ok && r.accountant_ok && r.status==='pending'){
+    await sb.from('personal_withdrawals').update({ status:'approved', approved_date:new Date().toISOString().slice(0,10) }).eq('id',id);
+    await logActivity('executed','withdrawal',`${naira(r.amount)} fully approved`, r.amount);
+  }
+  loadPersonal();
+}
+async function rejectWithdrawal(id){
+  if(!confirm('Reject this withdrawal request?')) return;
+  const { data:r } = await sb.from('personal_withdrawals').select('*').eq('id',id).single();
+  await sb.from('personal_withdrawals').update({ status:'rejected' }).eq('id',id);
+  await logActivity('rejected','withdrawal',`${naira(r.amount)} — ${esc((r.requester_role||'').toUpperCase())}`, r.amount);
+  loadPersonal();
+}
+
+/* ---------- shared: upload-and-list library builder ---------- */
+async function fileFromInput(inputId){ return $(inputId).files[0] || null; }
+
+/* ---------- WEEKLY ROSTERS ---------- */
+function renderRosters(){
+  const canUpload = isMgmt();
+  $('pageContent').innerHTML = `
+    ${canUpload?`<div class="panel"><h3>Upload roster</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="roBiz">${bizOptions(false)}</select></div>
+        <div class="field"><label>Week starting</label><input id="roWeek" type="date"></div>
+        <div class="field full"><label>Title</label><input id="roTitle" placeholder="e.g. Roster — week of 7 July"></div>
+        <div class="field full"><label>File (PDF or image)</label><input id="roFile" type="file" accept="image/*,application/pdf"></div>
+      </div>
+      <button class="btn-primary" id="roSave" style="max-width:180px">Upload</button><div class="msg" id="roMsg"></div>
+    </div>`:''}
+    <div class="panel"><h3>Rosters</h3><div id="roList"><div class="loading">Loading…</div></div></div>`;
+  if(canUpload) $('roSave').addEventListener('click', async ()=>{
+    if(!$('roWeek').value) return flash('roMsg','err','Pick the week starting date.');
+    $('roSave').disabled=true; flash('roMsg','ok','Uploading…');
+    const path=await uploadFile(await fileFromInput('roFile'));
+    const { error } = await sb.from('rosters').insert({ business_key:$('roBiz').value,
+      week_start:$('roWeek').value, title:$('roTitle').value.trim()||null, file_path:path });
+    $('roSave').disabled=false;
+    if(error) return flash('roMsg','err','Error: '+error.message);
+    flash('roMsg','ok','Uploaded.'); $('roTitle').value='';$('roFile').value='';
+    loadRosters();
+  });
+  loadRosters();
+}
+async function loadRosters(){
+  const { data, error } = await sb.from('rosters').select('*').order('week_start',{ascending:false}).limit(40);
+  const el=$('roList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No rosters yet.</div>`;
+  el.innerHTML=(await Promise.all(data.map(async r=>{
+    const url=await fileURL(r.file_path);
+    return `<div style="border-bottom:1px dashed var(--line);padding:11px 0;display:flex;align-items:baseline;gap:8px">
+      <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+      <strong style="font-size:.88rem">${esc(r.title||'Roster')}</strong>
+      <span style="font-size:.75rem;color:var(--ink-soft)">wk ${r.week_start}</span>
+      ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell);margin-left:auto">open</a>`:'<span style="margin-left:auto;font-size:.72rem;color:var(--ink-soft)">no file</span>'}
+    </div>`;
+  }))).join('');
+}
+
+/* ---------- REPORTS (shared builder for accountant + manager) ---------- */
+function reportModule(cfg){
+  // cfg: {kinds:[{val,label}], canUpload:bool, listKinds:[...] }
+  const canUpload = cfg.canUpload;
+  $('pageContent').innerHTML = `
+    ${canUpload?`<div class="panel"><h3>Upload report</h3>
+      <div class="form-grid">
+        <div class="field"><label>Type</label><select id="rpKind">${cfg.kinds.map(k=>`<option value="${k.val}">${k.label}</option>`).join('')}</select></div>
+        <div class="field"><label>Business</label><select id="rpBiz">${bizOptions()}</select></div>
+        <div class="field"><label>Period start</label><input id="rpStart" type="date"></div>
+        <div class="field"><label>Period end</label><input id="rpEnd" type="date"></div>
+        <div class="field full"><label>Title</label><input id="rpTitle" placeholder="e.g. Weekly report — 1–7 July"></div>
+        <div class="field full"><label>Notes</label><textarea id="rpNotes" placeholder="optional summary"></textarea></div>
+        <div class="field full"><label>File (optional)</label><input id="rpFile" type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"></div>
+      </div>
+      <button class="btn-primary" id="rpSave" style="max-width:180px">Upload</button><div class="msg" id="rpMsg"></div>
+    </div>`:''}
+    <div class="panel"><h3>Reports</h3><div id="rpList"><div class="loading">Loading…</div></div></div>`;
+  if(canUpload) $('rpSave').addEventListener('click', async ()=>{
+    if(!$('rpTitle').value.trim()) return flash('rpMsg','err','Give the report a title.');
+    $('rpSave').disabled=true; flash('rpMsg','ok','Uploading…');
+    const path=await uploadFile(await fileFromInput('rpFile'));
+    const { error } = await sb.from('reports').insert({ report_kind:$('rpKind').value,
+      business_key:$('rpBiz').value||null, title:$('rpTitle').value.trim(),
+      period_start:$('rpStart').value||null, period_end:$('rpEnd').value||null,
+      notes:$('rpNotes').value.trim()||null, file_path:path });
+    $('rpSave').disabled=false;
+    if(error) return flash('rpMsg','err','Error: '+error.message);
+    flash('rpMsg','ok','Uploaded.'); $('rpTitle').value='';$('rpNotes').value='';$('rpFile').value='';
+    loadReports(cfg.listKinds);
+  });
+  loadReports(cfg.listKinds);
+}
+async function loadReports(kinds){
+  const { data, error } = await sb.from('reports').select('*').in('report_kind',kinds)
+    .order('created_at',{ascending:false}).limit(40);
+  const el=$('rpList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No reports yet.</div>`;
+  el.innerHTML=(await Promise.all(data.map(async r=>{
+    const url=await fileURL(r.file_path);
+    const period=r.period_start?`${r.period_start}${r.period_end?' → '+r.period_end:''}`:'';
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+        <strong style="font-size:.9rem">${esc(r.title)}</strong>
+        ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell);margin-left:auto">open</a>`:''}
+      </div>
+      ${period?`<div style="font-size:.74rem;color:var(--ink-soft)">${period}</div>`:''}
+      ${r.notes?`<p style="font-size:.83rem;margin-top:4px;white-space:pre-wrap">${esc(r.notes)}</p>`:''}
+    </div>`;
+  }))).join('');
+}
+function renderAcctRep(){
+  reportModule({ canUpload:has('ceo','coo','accountant'),
+    kinds:[{val:'accountant_daily',label:'Daily'},{val:'accountant_weekly',label:'Weekly'}],
+    listKinds:['accountant_daily','accountant_weekly'] });
+}
+function renderMgrRep(){
+  reportModule({ canUpload:has('ceo','coo','manager'),
+    kinds:[{val:'manager_weekly',label:'Weekly manager report'}],
+    listKinds:['manager_weekly'] });
+}
+
+/* ---------- SOPs LIBRARY ---------- */
+function renderSops(){
+  const canUpload=isMgmt();
+  $('pageContent').innerHTML = `
+    ${canUpload?`<div class="panel"><h3>Upload SOP</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="soBiz">${bizOptions()}</select></div>
+        <div class="field full"><label>Title</label><input id="soTitle" placeholder="e.g. Opening checklist"></div>
+        <div class="field full"><label>Notes</label><textarea id="soNotes" placeholder="optional"></textarea></div>
+        <div class="field full"><label>File</label><input id="soFile" type="file" accept="image/*,application/pdf,.doc,.docx"></div>
+      </div>
+      <button class="btn-primary" id="soSave" style="max-width:180px">Upload</button><div class="msg" id="soMsg"></div>
+    </div>`:''}
+    <div class="panel"><h3>SOPs</h3><div id="soList"><div class="loading">Loading…</div></div></div>`;
+  if(canUpload) $('soSave').addEventListener('click', async ()=>{
+    if(!$('soTitle').value.trim()) return flash('soMsg','err','Give it a title.');
+    $('soSave').disabled=true; flash('soMsg','ok','Uploading…');
+    const path=await uploadFile(await fileFromInput('soFile'));
+    const { error } = await sb.from('sops').insert({ business_key:$('soBiz').value||null,
+      title:$('soTitle').value.trim(), notes:$('soNotes').value.trim()||null, file_path:path });
+    $('soSave').disabled=false;
+    if(error) return flash('soMsg','err','Error: '+error.message);
+    flash('soMsg','ok','Uploaded.'); $('soTitle').value='';$('soNotes').value='';$('soFile').value='';
+    loadSops();
+  });
+  loadSops();
+}
+async function loadSops(){
+  const { data, error } = await sb.from('sops').select('*').order('created_at',{ascending:false}).limit(60);
+  const el=$('soList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No SOPs yet.</div>`;
+  el.innerHTML=(await Promise.all(data.map(async s=>{
+    const url=await fileURL(s.file_path);
+    return `<div style="border-bottom:1px dashed var(--line);padding:11px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(s.business_key)}"></i>${bizName(s.business_key)}</span>
+        <strong style="font-size:.88rem">${esc(s.title)}</strong>
+        ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell);margin-left:auto">open</a>`:''}
+      </div>${s.notes?`<p style="font-size:.82rem;margin-top:4px;white-space:pre-wrap">${esc(s.notes)}</p>`:''}
+    </div>`;
+  }))).join('');
+}
+
+/* ---------- RECIPES (locked to ceo/coo/manager by RLS) ---------- */
+function renderRecipes(){
+  const canUpload=isMgmt();
+  $('pageContent').innerHTML = `
+    <div class="demo-banner" style="background:#F3EDDF;border:1.5px dashed #D8C99E;color:#7A6320;border-radius:10px;padding:10px 16px;font-size:.8rem;margin-bottom:18px">Recipes are visible to CEO, COO and Manager only.</div>
+    ${canUpload?`<div class="panel"><h3>Add recipe</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="reBiz">${bizOptions(false)}</select></div>
+        <div class="field full"><label>Title</label><input id="reTitle" placeholder="e.g. Signature burger sauce"></div>
+        <div class="field full"><label>Recipe (type it here)</label><textarea id="reBody" placeholder="Ingredients and method…" style="min-height:120px"></textarea></div>
+        <div class="field full"><label>Or attach a file</label><input id="reFile" type="file" accept="image/*,application/pdf,.doc,.docx"></div>
+      </div>
+      <button class="btn-primary" id="reSave" style="max-width:180px">Save recipe</button><div class="msg" id="reMsg"></div>
+    </div>`:''}
+    <div class="panel"><h3>Recipes</h3><div id="reList"><div class="loading">Loading…</div></div></div>`;
+  if(canUpload) $('reSave').addEventListener('click', async ()=>{
+    if(!$('reTitle').value.trim()) return flash('reMsg','err','Give it a title.');
+    $('reSave').disabled=true; flash('reMsg','ok','Saving…');
+    const path=await uploadFile(await fileFromInput('reFile'));
+    const { error } = await sb.from('recipes').insert({ business_key:$('reBiz').value,
+      title:$('reTitle').value.trim(), body:$('reBody').value.trim()||null, file_path:path });
+    $('reSave').disabled=false;
+    if(error) return flash('reMsg','err','Error: '+error.message);
+    flash('reMsg','ok','Saved.'); $('reTitle').value='';$('reBody').value='';$('reFile').value='';
+    loadRecipes();
+  });
+  loadRecipes();
+}
+async function loadRecipes(){
+  const { data, error } = await sb.from('recipes').select('*').order('created_at',{ascending:false}).limit(60);
+  const el=$('reList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No recipes yet.</div>`;
+  el.innerHTML=(await Promise.all(data.map(async r=>{
+    const url=await fileURL(r.file_path);
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+        <strong style="font-size:.9rem">${esc(r.title)}</strong>
+        ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell);margin-left:auto">open file</a>`:''}
+      </div>${r.body?`<p style="font-size:.83rem;margin-top:5px;white-space:pre-wrap">${esc(r.body)}</p>`:''}
+    </div>`;
+  }))).join('');
+}
+
+/* ---------- APPROVALS (₦500k dual-sign gate) ---------- */
+const ACTION_LABEL = { expense:'Large expense', refund:'Large refund', delete_finance:'Delete finance entry' };
+function renderApprovals(){
+  const isOwner = has('ceo','coo');
+  $('pageContent').innerHTML = `
+    <div class="demo-banner" style="background:#F3EDDF;border:1.5px dashed #D8C99E;color:#7A6320;border-radius:10px;padding:10px 16px;font-size:.8rem;margin-bottom:18px">
+      Anything over ${naira(APPROVAL_THRESHOLD)} waits here until <strong>both CEO and COO</strong> approve. ${isOwner?'':'You can raise requests; only the owners approve them.'}</div>
+    <div class="panel"><h3>Waiting for approval</h3><div id="apPending"><div class="loading">Loading…</div></div></div>
+    <div class="panel"><h3>Recently decided</h3><div id="apDone"></div></div>`;
+  loadApprovals();
+}
+async function loadApprovals(){
+  const { data, error } = await sb.from('approval_requests').select('*').order('created_at',{ascending:false}).limit(60);
+  const pend=$('apPending'), done=$('apDone');
+  if(error){ pend.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`; return; }
+  const pending=(data||[]).filter(r=>r.status==='pending');
+  const decided=(data||[]).filter(r=>r.status!=='pending');
+  const isOwner=has('ceo','coo');
+  const card=r=>{
+    const ceo = r.ceo_ok?'CEO \u2713':'CEO \u2014';
+    const coo = r.coo_ok?'COO \u2713':'COO \u2014';
+    const mySide = me.role==='ceo'?'ceo_ok':(me.role==='coo'?'coo_ok':null);
+    const iApproved = mySide && r[mySide];
+    const canAct = isOwner && r.status==='pending' && !iApproved;
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+        <strong>${ACTION_LABEL[r.action_type]||r.action_type}</strong>
+        <span class="mono" style="margin-left:auto">${naira(r.amount||0)}</span>
+      </div>
+      <div style="font-size:.8rem;color:var(--ink-soft);margin-top:3px">${esc(r.reason||'')} · raised by ${esc(r.requested_name||'?')}</div>
+      <div style="font-size:.78rem;margin-top:5px"><span style="color:${r.ceo_ok?'var(--ok)':'var(--ink-soft)'}">${ceo}</span> &nbsp; <span style="color:${r.coo_ok?'var(--ok)':'var(--ink-soft)'}">${coo}</span>
+        ${r.status==='executed'?' · <span style="color:var(--ok)">done</span>':r.status==='rejected'?' · <span style="color:var(--ndk)">rejected</span>':''}</div>
+      ${canAct?`<div style="margin-top:8px">
+        <button class="btn-primary apAppr" data-id="${r.id}" style="max-width:130px;display:inline-block;width:auto;padding:8px 16px">Approve</button>
+        <button class="del-btn apRej" data-id="${r.id}" style="color:var(--ndk);margin-left:14px">reject</button></div>`
+        : (iApproved && r.status==='pending' ? `<div style="font-size:.75rem;color:var(--ink-soft);margin-top:6px">You approved — waiting on the other owner.</div>`:'')}
+    </div>`;
+  };
+  pend.innerHTML = pending.length ? pending.map(card).join('') : `<div class="loading">Nothing waiting. All clear.</div>`;
+  done.innerHTML = decided.length ? decided.slice(0,15).map(card).join('') : `<div class="loading">Nothing decided yet.</div>`;
+  pend.querySelectorAll('.apAppr').forEach(b=>b.addEventListener('click',()=>approveRequest(b.dataset.id)));
+  pend.querySelectorAll('.apRej').forEach(b=>b.addEventListener('click',()=>rejectRequest(b.dataset.id)));
+}
+async function approveRequest(id){
+  const side = me.role==='ceo'?'ceo_ok':'coo_ok';
+  const upd={}; upd[side]=me.id;
+  await sb.from('approval_requests').update(upd).eq('id',id);
+  const { data:r } = await sb.from('approval_requests').select('*').eq('id',id).single();
+  await logActivity('approved', r.action_type, `${naira(r.amount||0)} — ${r.reason||''}`, r.amount, r.business_key);
+  if (r.ceo_ok && r.coo_ok && r.status==='pending') await executeApproval(r);
+  loadApprovals();
+}
+async function rejectRequest(id){
+  if(!confirm('Reject this request? It will not take effect.')) return;
+  const { data:r } = await sb.from('approval_requests').select('*').eq('id',id).single();
+  await sb.from('approval_requests').update({status:'rejected'}).eq('id',id);
+  await logActivity('rejected', r.action_type, `${naira(r.amount||0)} — ${r.reason||''}`, r.amount, r.business_key);
+  loadApprovals();
+}
+async function executeApproval(r){
+  let error;
+  if (r.action_type==='expense' || r.action_type==='sale'){
+    ({ error } = await sb.from('finance_entries').insert(r.payload));
+  } else if (r.action_type==='refund'){
+    ({ error } = await sb.from('refunds').insert(r.payload));
+  } else if (r.action_type==='delete_finance'){
+    ({ error } = await sb.from('finance_entries').delete().eq('id', r.payload.id));
+  }
+  if (error){ alert('Both approved, but committing failed: '+error.message); return; }
+  await sb.from('approval_requests').update({status:'executed'}).eq('id',r.id);
+  await logActivity('executed', r.action_type, `${naira(r.amount||0)} committed after dual approval`, r.amount, r.business_key);
+}
+
+/* ---------- DECISIONS LOG ---------- */
+function renderDecisions(){
+  $('pageContent').innerHTML = `
+    <div class="panel"><h3>Log a decision</h3>
+      <div class="form-grid">
+        <div class="field full"><label>Decision</label><input id="dcTitle" placeholder="e.g. Raise Moo Moo prices 10% from August"></div>
+        <div class="field full"><label>Details / reasoning</label><textarea id="dcDetail" placeholder="Why, and anything the other owner should know"></textarea></div>
+      </div>
+      <button class="btn-primary" id="dcSave" style="max-width:180px">Log it</button><div class="msg" id="dcMsg"></div>
+      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Once logged, the other owner sees it and taps Acknowledge — so there\u2019s a shared record you both agreed.</p>
+    </div>
+    <div class="panel"><h3>Decisions</h3><div id="dcList"><div class="loading">Loading…</div></div></div>`;
+  $('dcSave').addEventListener('click', async ()=>{
+    if(!$('dcTitle').value.trim()) return flash('dcMsg','err','Describe the decision.');
+    $('dcSave').disabled=true;
+    const { error } = await sb.from('decisions').insert({ title:$('dcTitle').value.trim(),
+      detail:$('dcDetail').value.trim()||null, logged_name:me.name, logged_role:me.role });
+    $('dcSave').disabled=false;
+    if(error) return flash('dcMsg','err','Error: '+error.message);
+    flash('dcMsg','ok','Logged.'); await logActivity('created','decision',$('dcTitle').value.trim());
+    $('dcTitle').value='';$('dcDetail').value='';
+    loadDecisions();
+  });
+  loadDecisions();
+}
+async function loadDecisions(){
+  const { data, error } = await sb.from('decisions').select('*').order('created_at',{ascending:false}).limit(50);
+  const el=$('dcList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No decisions logged yet.</div>`;
+  el.innerHTML = data.map(d=>{
+    const canAck = has('ceo','coo') && d.status==='awaiting' && d.logged_role!==me.role;
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <strong style="font-size:.92rem">${esc(d.title)}</strong>
+        <span style="margin-left:auto">${d.status==='acknowledged'?'<span class="pill" style="background:#E3EFE6;color:var(--ok)">agreed</span>':'<span class="pill" style="background:#F7EBD8;color:#8A5B16">awaiting</span>'}</span>
+      </div>
+      ${d.detail?`<p style="font-size:.84rem;margin-top:5px;white-space:pre-wrap">${esc(d.detail)}</p>`:''}
+      <div style="font-size:.73rem;color:var(--ink-soft);margin-top:5px">Raised by ${esc(d.logged_name||'?')} (${(d.logged_role||'').toUpperCase()}) · ${(d.created_at||'').slice(0,10)}${d.acknowledged_name?` · acknowledged by ${esc(d.acknowledged_name)}`:''}</div>
+      ${canAck?`<button class="btn-primary dcAck" data-id="${d.id}" style="max-width:150px;width:auto;display:inline-block;padding:8px 16px;margin-top:8px">Acknowledge</button>`:''}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.dcAck').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('decisions').update({status:'acknowledged',acknowledged_by:me.id,acknowledged_name:me.name}).eq('id',b.dataset.id);
+    await logActivity('acknowledged','decision','Acknowledged a decision');
+    loadDecisions();
+  }));
+}
+
+/* ---------- ACTIVITY LOG ---------- */
+async function renderActivity(){
+  $('pageContent').innerHTML = `<div class="panel"><h3>Everything that happened</h3><div id="actList"><div class="loading">Loading history…</div></div></div>`;
+  const { data, error } = await sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(150);
+  const el=$('actList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No activity recorded yet.</div>`;
+  const color={requested:'var(--breadi)',created:'var(--ok)',edited:'var(--breadi)',deleted:'var(--ndk)',approved:'var(--ok)',rejected:'var(--ndk)',executed:'var(--shell)',acknowledged:'var(--ok)'};
+  el.innerHTML=`<table class="ledger"><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+    ${data.map(a=>{
+      const when=new Date(a.created_at); const w=isNaN(when)?'':when.toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      return `<tr><td style="white-space:nowrap">${w}</td><td>${esc(a.actor_name||'?')}</td>
+        <td><span class="pill" style="background:#EDE7DA;color:${color[a.action]||'#5a5346'}">${esc(a.action||'')}</span> ${esc(a.entity||'')}</td>
+        <td>${esc(a.detail||'')}${a.business_key?` <span style="color:var(--ink-soft)">· ${bizName(a.business_key)}</span>`:''}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+/* ---------- INFECTION CONTROL (general / premises) ---------- */
+function renderInfection(){
+  const canManage=['ceo','coo','manager'].includes(me.role);
+  const types=['Cleaning / sanitation','Pest control','Premises inspection','Staff health screening','Illness / incident','Waste disposal','Water quality','Other'];
+  const statuses=['Done','Scheduled','Action needed','Passed','Failed'];
+  $('pageContent').innerHTML = `
+    ${canManage?`<div class="panel"><h3>Log a record</h3>
+      <div class="form-grid">
+        <div class="field"><label>Business</label><select id="icBiz">${bizOptions()}</select></div>
+        <div class="field"><label>Type</label><select id="icType">${types.map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div class="field"><label>Date</label><input id="icDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>Status</label><select id="icStatus">${statuses.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="field full"><label>Title</label><input id="icTitle" placeholder="e.g. Weekly deep clean — kitchen & store"></div>
+        <div class="field full"><label>Notes</label><textarea id="icNotes" placeholder="What was done, who did it, any findings"></textarea></div>
+        <div class="field full"><label>File (checklist, certificate, photo)</label><input id="icFile" type="file" accept="image/*,application/pdf"></div>
+      </div>
+      <button class="btn-primary" id="icSave" style="max-width:170px">Log record</button><div class="msg" id="icMsg"></div>
+    </div>`:''}
+    <div class="panel"><h3>Records</h3><div id="icList"><div class="loading">Loading…</div></div></div>`;
+  if(canManage) $('icSave').addEventListener('click', async ()=>{
+    if(!$('icTitle').value.trim()) return flash('icMsg','err','Give it a title.');
+    $('icSave').disabled=true; flash('icMsg','ok','Saving…');
+    const path = $('icFile').files[0] ? await uploadFile($('icFile').files[0]) : null;
+    const { error } = await sb.from('infection_control').insert({ business_key:$('icBiz').value||null,
+      record_type:$('icType').value, record_date:$('icDate').value, status:$('icStatus').value,
+      title:$('icTitle').value.trim(), notes:$('icNotes').value.trim()||null, file_path:path, logged_name:me.name });
+    $('icSave').disabled=false;
+    if(error) return flash('icMsg','err','Error: '+error.message);
+    flash('icMsg','ok','Logged.'); await logActivity('created','infection_control',$('icTitle').value.trim(),null,$('icBiz').value||null);
+    $('icTitle').value='';$('icNotes').value='';$('icFile').value='';
+    loadInfection();
+  });
+  loadInfection();
+}
+async function loadInfection(){
+  const { data, error } = await sb.from('infection_control').select('*').order('record_date',{ascending:false}).limit(60);
+  const el=$('icList');
+  if(error) return el.innerHTML=`<div class="loading">Error: ${esc(error.message)}</div>`;
+  if(!data.length) return el.innerHTML=`<div class="loading">No records yet.</div>`;
+  const canManage=['ceo','coo','manager'].includes(me.role);
+  const sColor=s=>s==='Failed'||s==='Action needed'?'var(--ndk)':(s==='Scheduled'?'#8A5B16':'var(--ok)');
+  el.innerHTML=(await Promise.all(data.map(async r=>{
+    const url=await fileURL(r.file_path);
+    return `<div style="border-bottom:1px dashed var(--line);padding:12px 0">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span class="biz-tag"><i style="background:${bizColor(r.business_key)}"></i>${bizName(r.business_key)}</span>
+        <strong style="font-size:.9rem">${esc(r.title)}</strong>
+        <span class="pill" style="background:#EDE7DA;color:${sColor(r.status)}">${esc(r.status||'')}</span>
+        <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <span style="font-size:.74rem;color:var(--ink-soft)">${r.record_date||''}</span>
+          ${url?`<a href="${url}" target="_blank" class="del-btn" style="color:var(--shell)">file</a>`:''}
+          ${canManage?`<button class="del-btn icDel" data-id="${r.id}" style="color:var(--ndk)">remove</button>`:''}</span>
+      </div>
+      <div style="font-size:.76rem;color:var(--ink-soft);margin-top:2px">${esc(r.record_type||'')}</div>
+      ${r.notes?`<p style="font-size:.83rem;margin-top:4px;white-space:pre-wrap">${esc(r.notes)}</p>`:''}
+    </div>`;
+  }))).join('');
+  el.querySelectorAll('.icDel').forEach(b=>b.addEventListener('click',async()=>{
+    await sb.from('infection_control').delete().eq('id',b.dataset.id); loadInfection();
+  }));
+}
+</script>
+</body>
+</html>
